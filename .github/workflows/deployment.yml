@@ -24,7 +24,7 @@ jobs:
 
       # Step 3: Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       # Step 4: Build the project (with environment variable)
       - name: Build the project
@@ -36,12 +36,12 @@ jobs:
       - name: Deploy the build folder to EC2
         uses: easingthemes/ssh-deploy@main
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}  # Your private SSH key stored in GitHub secrets
-          REMOTE_HOST: ${{ secrets.HOST_DNS }}         # Your EC2 public DNS
-          REMOTE_USER: ${{ secrets.USERNAME }}         # Username (e.g., ubuntu)
-          TARGET: /var/www/html                        # Target directory on EC2
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }} # Your private SSH key stored in GitHub secrets
+          REMOTE_HOST: ${{ secrets.HOST_DNS }} # Your EC2 public DNS
+          REMOTE_USER: ${{ secrets.USERNAME }} # Username (e.g., ubuntu)
+          TARGET: /var/www/html # Target directory on EC2
         with:
-          SOURCE: build/                               # Source directory in GitHub runner
+          SOURCE: build/ # Source directory in GitHub runner
           EXCLUDE: ".git .github node_modules"
 
       # Step 6: Restart Apache to reflect changes
