@@ -1,0 +1,58 @@
+.balance-sheet-container {
+  padding: 20px;
+  width: 100%;
+}
+
+.balance-sheet-container h1 {
+  text-align: left;
+  color: #e8f1ff;
+  font-size: 20px;
+}
+
+.balance-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.balance-sheet-table th,
+.balance-sheet-table td {
+  padding: 10px;
+  border: 1px solid rgba(125, 145, 180, 0.14);
+  color: #dbe7ff;
+}
+
+.balance-sheet-table th {
+  background-color: rgba(148, 163, 184, 0.08);
+  font-weight: bold;
+  text-align: left;
+}
+
+.section-header td {
+  font-weight: bold;
+  background-color: rgba(148, 163, 184, 0.06);
+  color: #f8fbff;
+}
+
+.amount {
+  text-align: right;
+  background: transparent !important;
+  font-weight: 700;
+}
+
+.amount.positive {
+  color: #fde68a;
+}
+
+.amount.negative {
+  color: #c4b5fd;
+}
+
+.amount-net-income {
+  color: #f9a8d4;
+}
+
+.total-row {
+  font-weight: bold;
+  background-color: rgba(148, 163, 184, 0.08);
+}

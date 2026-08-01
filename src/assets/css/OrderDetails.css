@@ -1,0 +1,79 @@
+/* Card Styling */
+.order-card {
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.24);
+  border-radius: 18px;
+  border: 1px solid rgba(125, 145, 180, 0.16);
+}
+
+/* Header */
+.order-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 0;
+  background-color: rgba(148, 163, 184, 0.08);
+  border-bottom: 1px solid rgba(125, 145, 180, 0.12);
+}
+
+/* Section Heading */
+.section-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 20px;
+  color: #e8f1ff;
+}
+
+/* Table Styling */
+/* .order-table {
+  margin-top: 20px;
+} */
+
+.card-title {
+  font-size: 18px;
+}
+
+.order-table th,
+.order-table td {
+  text-align: left;
+}
+
+.order-table th {
+  background-color: rgba(148, 163, 184, 0.08);
+  font-weight: bold !important;
+  font-size: 16px !important;
+}
+
+.order-table tbody tr:nth-child(even) {
+  background-color: rgba(15, 23, 42, 0.46);
+}
+
+.order-table tbody tr:nth-child(odd) {
+  background-color: transparent;
+}
+
+.order-table tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+.order-table img {
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
+  border: 1px solid rgba(125, 145, 180, 0.16);
+}
+
+.summary-section span {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+
+/* Responsive Layout */
+@media (max-width: 768px) {
+  .order-info-col {
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 13px;
+  }
+}

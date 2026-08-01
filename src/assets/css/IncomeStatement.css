@@ -1,0 +1,113 @@
+/* Container styling */
+.income-statement {
+    width: 100%;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  
+  /* Title styling */
+  .income-statement h1 {
+    text-align: left;
+    font-size: 20px;
+    margin-bottom: 30px;
+    color: #e8f1ff;
+  }
+  
+  /* Table styling */
+  .statement-table table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid rgba(125, 145, 180, 0.14);
+  }
+  
+  /* Table cell styling */
+  .statement-table td {
+    padding: 12px 15px;
+    border: 1px solid rgba(125, 145, 180, 0.14);
+    color: #dbe7ff;
+  }
+  
+  /* Header cells */
+  .statement-table td:first-child {
+    width: 70%;
+  }
+  
+  .statement-table td:last-child {
+    width: 30%;
+    text-align: right;
+  }
+  
+  /* Category headers (Revenue, Expense) */
+  .statement-table tr td strong {
+    font-size: 14px;
+    font-weight: bold;
+    color: #f8fbff;
+  }
+  
+  /* Net Income row */
+  .statement-table tr:last-child {
+    background-color: rgba(148, 163, 184, 0.08);
+  }
+  
+  .statement-table tr:last-child td {
+    font-weight: bold;
+  }
+  
+  /* Formula display */
+  .net-income-formula {
+    text-align: right;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #8ea0c0;
+  }
+
+  .statement-value {
+    background: transparent !important;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .statement-value--revenue,
+  .statement-value--net {
+    color: #f9a8d4;
+  }
+
+  .statement-value--expense {
+    color: #fda4af;
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .income-statement {
+      margin: 20px;
+      padding: 10px;
+    }
+    
+    .statement-table td {
+      padding: 8px;
+      font-size: 14px;
+    }
+    
+    .income-statement h1 {
+      font-size: 20px;
+    }
+  }
+  
+  /* Optional hover effects */
+  .statement-table tr:hover {
+    background-color: rgba(59, 130, 246, 0.08);
+    transition: background-color 0.3s ease;
+  }
+  
+  /* Print styling */
+  @media print {
+    .income-statement {
+      box-shadow: none;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .statement-table td {
+      border: 1px solid #000;
+    }
+  }
