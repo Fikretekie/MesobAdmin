@@ -209,7 +209,7 @@ function Users() {
         size="sm"
         content={
           <div className="header text-center">
-            <h2 className="title">Users</h2>
+            <h2 className="title">Users.</h2>
           </div>
         }
       />
