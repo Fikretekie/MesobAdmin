@@ -1,0 +1,65 @@
+name: Deploy to S3 + CloudFront
+
+# Runs automatically every time you push to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Get your code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Step 3: Install dependencies (same fix we've been using locally)
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      # Step 4: Build the production files
+      - name: Build project
+        run: npm run build
+
+      # Step 5: Configure AWS credentials (from the secrets you just added)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Step 6: Upload static assets (JS/CSS/images) with long-term caching
+      - name: Upload static assets to S3
+        run: |
+          aws s3 sync build/static s3://${{ secrets.S3_BUCKET_NAME }}/static \
+            --cache-control "public, max-age=31536000, immutable" \
+            --delete
+
+      # Step 7: Upload index.html with no-cache (so updates always show)
+      - name: Upload index.html to S3
+        run: |
+          aws s3 cp build/index.html s3://${{ secrets.S3_BUCKET_NAME }}/index.html \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+      # Step 8: Upload any other root files (favicon, manifest.json, etc.)
+      - name: Upload remaining root files to S3
+        run: |
+          aws s3 sync build s3://${{ secrets.S3_BUCKET_NAME }} \
+            --exclude "static/*" \
+            --exclude "index.html"
+
+      # Step 9: Clear CloudFront's cache so changes show immediately
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
