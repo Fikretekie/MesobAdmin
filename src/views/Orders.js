@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import DataTable from "react-data-table-component";
 import {
@@ -28,6 +27,9 @@ import formatUserId from "utils/formatUID";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 
+// Lives outside the component so it survives navigating away and back.
+const ordersPageCache = {};
+
 const Orders = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,83 @@ const Orders = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [perPage, setPerPage] = useState(10);
   const navigate = useNavigate();
+
+  const tableCustomStyles = {
+    table: {
+      style: {
+        background: "transparent",
+      },
+    },
+    headRow: {
+      style: {
+        background: "rgba(255,255,255,0.02)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        minHeight: "44px",
+      },
+    },
+    headCells: {
+      style: {
+        color: "rgba(255,255,255,0.45)",
+        fontSize: "11px",
+        textTransform: "uppercase",
+        letterSpacing: "0.4px",
+        fontWeight: 600,
+      },
+    },
+    rows: {
+      style: {
+        background: "transparent",
+        color: "rgba(255,255,255,0.85)",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        minHeight: "52px",
+        "&:hover": {
+          background: "rgba(255,255,255,0.04)",
+        },
+      },
+    },
+    pagination: {
+      style: {
+        background: "transparent",
+        color: "rgba(255,255,255,0.6)",
+        borderTop: "1px solid rgba(255,255,255,0.08)",
+      },
+      pageButtonsStyle: {
+        color: "rgba(255,255,255,0.6)",
+        fill: "rgba(255,255,255,0.6)",
+        "&:disabled": {
+          fill: "rgba(255,255,255,0.2)",
+        },
+        "&:hover:not(:disabled)": {
+          background: "rgba(255,255,255,0.08)",
+        },
+      },
+    },
+    noData: {
+      style: {
+        background: "transparent",
+        color: "rgba(255,255,255,0.4)",
+      },
+    },
+  };
+
+  const pillTabStyle = (active) => ({
+    borderRadius: "20px",
+    padding: "8px 16px",
+    fontWeight: 600,
+    fontSize: "12.5px",
+    border: "none",
+    cursor: "pointer",
+    marginRight: "8px",
+    ...(active
+      ? {
+          background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
+          color: "#0a0612",
+        }
+      : {
+          background: "rgba(255,255,255,0.06)",
+          color: "rgba(255,255,255,0.65)",
+        }),
+  });
 
   // Fetch data based on active tab, page, and limit
   // const fetchOrders = async (page = 1, limit = 10, status = "Succeeded") => {
@@ -67,6 +146,16 @@ const Orders = () => {
   // };
   // 1. Updated fetchOrders
   const fetchOrders = async (page = 1, limit = 10, status = "Succeeded", environment = "production") => {
+    const cacheKey = `${page}-${limit}-${status}-${environment}`;
+
+    // Already have this exact page/tab from a previous visit — skip refetching
+    if (ordersPageCache[cacheKey]) {
+      setItems(ordersPageCache[cacheKey].items);
+      setTotalRows(ordersPageCache[cacheKey].totalRows);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await axios.get(
@@ -95,9 +184,13 @@ const Orders = () => {
           );
         }
 
+        const totalRows = environment === "test" ? fetchedItems.length : response.data.total || 0;
+
         setItems(fetchedItems);
         // Keep pagination count aligned for filtered lists.
-        setTotalRows(environment === "test" ? fetchedItems.length : response.data.total || 0);
+        setTotalRows(totalRows);
+
+        ordersPageCache[cacheKey] = { items: fetchedItems, totalRows };
       }
     } catch (error) {
       console.error("There was an error fetching the items!", error);
@@ -230,26 +323,8 @@ const Orders = () => {
       width: "200px",
     },
     {
-      name: "Phone",
-      selector: (row) => row.phone ?? "-",
-      sortable: true,
-      width: "150px",
-    },
-    {
-      name: "City",
-      selector: (row) => row.city ?? "-",
-      sortable: true,
-      width: "150px",
-    },
-    {
       name: "Platform",
       selector: (row) => row.Platform ?? "-",
-      sortable: true,
-      width: "120px",
-    },
-    {
-      name: "Is Sender",
-      selector: (row) => (row.isSender === true ? "Yes" : "No"),
       sortable: true,
       width: "120px",
     },
@@ -262,44 +337,52 @@ const Orders = () => {
     {
       name: "Assign",
       cell: (row) => {
-        if (row.assignedEmail || row.assignedName) {
-          return (
-            <Button
-              className="btn btn-info btn-round btn-sm"
-              onClick={() => handleEdit(row.id)}
-            >
-              <FontAwesomeIcon icon={faEdit} className="mr-2" />
-              {row.assignedName || row.assignedEmail}
-            </Button>
-          );
-        } else {
-          return (
-            <Button
-              className="btn btn-info btn-round btn-sm"
-              onClick={() => handleEdit(row.id)}
-            >
-              <FontAwesomeIcon icon={faEdit} className="mr-2" />
-              Assign
-            </Button>
-          );
-        }
+        const label = row.assignedName || row.assignedEmail || "Assign";
+        return (
+          <button
+            onClick={() => handleEdit(row.id)}
+            style={{
+              background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
+              color: "#0a0612",
+              border: "none",
+              borderRadius: "20px",
+              padding: "6px 14px",
+              fontSize: "11.5px",
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
+          >
+            <FontAwesomeIcon icon={faEdit} style={{ marginRight: 6 }} />
+            {label}
+          </button>
+        );
       },
-      width: "150px",
+      width: "170px",
     },
     {
       name: "Delete",
       cell: (row) => (
-        <Button
-          className="btn btn-danger btn-sm"
+        <button
           onClick={() => handleDelete(row.id)}
+          style={{
+            background: "rgba(244,114,182,0.15)",
+            color: "#f9a8d4",
+            border: "1px solid rgba(244,114,182,0.3)",
+            borderRadius: "20px",
+            padding: "6px 14px",
+            fontSize: "11.5px",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
         >
           Delete
-        </Button>
+        </button>
       ),
       ignoreRowClick: true,
       allowOverflow: true,
       button: true,
-      width: "100px",
+      width: "110px",
     },
   ];
 
@@ -342,100 +425,109 @@ const Orders = () => {
         }
       />
 
-      <div className="content">
+      <div
+        className="content"
+        style={{
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
+        }}
+      >
         <Row>
           <Col xs={12}>
-            <Card>
+            <Card
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: "16px",
+                boxShadow: "none",
+              }}
+            >
               <CardBody>
                 {/* Tabs */}
-                <Nav tabs>
-                  <NavItem>
-                    <NavLink
-                      className={classnames({ active: activeTab === "1" })}
-                      onClick={() => toggleTab("1")}
-                    >
-                      Succeeded Orders
-                    </NavLink>
-                  </NavItem>
-                  <NavItem>
-                    <NavLink
-                      className={classnames({ active: activeTab === "2" })}
-                      onClick={() => toggleTab("2")}
-                    >
-                      Attempts Orders
-                    </NavLink>
-                  </NavItem>
-                  <NavItem>
-                    <NavLink
-                      className={classnames({ active: activeTab === "3" })}
-                      onClick={() => toggleTab("3")}
-                    >
-                      Closed Orders
-                    </NavLink>
-                  </NavItem>
+                <div style={{ marginBottom: 16 }}>
+                  <button
+                    style={pillTabStyle(activeTab === "1")}
+                    onClick={() => toggleTab("1")}
+                  >
+                    Succeeded Orders
+                  </button>
+                  <button
+                    style={pillTabStyle(activeTab === "2")}
+                    onClick={() => toggleTab("2")}
+                  >
+                    Attempts Orders
+                  </button>
+                  <button
+                    style={pillTabStyle(activeTab === "3")}
+                    onClick={() => toggleTab("3")}
+                  >
+                    Closed Orders
+                  </button>
+                  <button
+                    style={pillTabStyle(activeTab === "4")}
+                    onClick={() => toggleTab("4")}
+                  >
+                    Test Orders
+                  </button>
+                </div>
 
-                  <NavItem>
-                    <NavLink
-                      className={classnames({ active: activeTab === "4" })}
-                      onClick={() => toggleTab("4")}
-                    >
-                      Test Orders
-                    </NavLink>
-                  </NavItem>
-                </Nav>
-
-                {/* Tab Content */}
-                <TabContent activeTab={activeTab}>
-                  <TabPane tabId={activeTab}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <CardTitle tag="h4">
-                        {activeTab === "1"
-                          ? "Succeeded Orders"
-                          : activeTab === "2"
-                            ? "Attempts Orders"
-                            : activeTab === "3"
-                              ? "Closed Orders"
-                              : "Test Orders"}
-                      </CardTitle>
-                      <Input
-                        type="text"
-                        placeholder="Search by name..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ marginLeft: "10px", width: "250px" }}
-                      />
-                    </div>
-                    {loading ? (
-                      <div style={{ textAlign: "center", padding: "20px" }}>
-                        <Spinner color="primary" />
-                        <p>Loading orders...</p>
-                      </div>
-                    ) : (
-                      <DataTable
-                        columns={columns}
-                        data={filteredOrders}
-                        selectableRows
-                        responsive
-                        fixedHeader={true}
-                        pagination
-                        paginationServer
-                        paginationTotalRows={totalRows}
-                        paginationDefaultPage={currentPage}
-                        onChangePage={handlePageChange}
-                        onChangeRowsPerPage={handlePerRowsChange}
-                        paginationPerPage={perPage}
-                        paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
-                        highlightOnHover
-                      />
-                    )}
-                  </TabPane>
-                </TabContent>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <CardTitle tag="h4" style={{ color: "#fff" }}>
+                    {activeTab === "1"
+                      ? "Succeeded Orders"
+                      : activeTab === "2"
+                        ? "Attempts Orders"
+                        : activeTab === "3"
+                          ? "Closed Orders"
+                          : "Test Orders"}
+                  </CardTitle>
+                  <Input
+                    type="text"
+                    placeholder="Search by name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{
+                      marginLeft: "10px",
+                      width: "250px",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#fff",
+                      borderRadius: "10px",
+                    }}
+                  />
+                </div>
+                {loading ? (
+                  <div style={{ textAlign: "center", padding: "20px" }}>
+                    <Spinner color="primary" />
+                    <p style={{ color: "rgba(255,255,255,0.6)" }}>Loading orders...</p>
+                  </div>
+                ) : (
+                  <DataTable
+                    columns={columns}
+                    data={filteredOrders}
+                    selectableRows
+                    responsive
+                    fixedHeader={true}
+                    pagination
+                    paginationServer
+                    paginationTotalRows={totalRows}
+                    paginationDefaultPage={currentPage}
+                    onChangePage={handlePageChange}
+                    onChangeRowsPerPage={handlePerRowsChange}
+                    paginationPerPage={perPage}
+                    paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
+                    highlightOnHover
+                    customStyles={tableCustomStyles}
+                  />
+                )}
               </CardBody>
             </Card>
           </Col>

@@ -29,7 +29,8 @@
     "react-window": "^1.8.10",
     "reactstrap": "8.10.0",
     "sass": "1.62.1",
-    "styled-components": "^6.1.13"
+    "styled-components": "^6.1.13",
+    "tinymce": "^8.8.2"
   },
   "scripts": {
     "start": "react-scripts start",

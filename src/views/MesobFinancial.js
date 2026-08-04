@@ -35,6 +35,7 @@ import { AddExpenseButton } from "components/AddExpenseButton";
 import IncomeStatement from "../components/IncomeStatement";
 import BalanceSheet from "components/BalanceSheet";
 import { BsTrashFill } from 'react-icons/bs';
+import { Bar } from 'react-chartjs-2';
 
 function MesobFinancial() {
   const [items, setItems] = useState([]);
@@ -319,6 +320,42 @@ function MesobFinancial() {
     }, 0).toFixed(2);
   }
 
+  function getRevenueExpenseChartData(items) {
+    const byDate = {};
+    items.forEach((transaction) => {
+      const dateKey = transaction.date ? transaction.date.split('T')[0] : 'Unknown';
+      if (!byDate[dateKey]) byDate[dateKey] = { revenue: 0, expense: 0 };
+
+      if (transaction.type === 0) {
+        const sheepProviderCost = parseFloat(transaction.sheepGoatCost || '0');
+        const generalProviderCost = parseFloat(transaction.generalProductsCost || '0');
+        const totalCost = parseFloat(transaction.totalCost || '0');
+        byDate[dateKey].revenue += Math.abs((sheepProviderCost + generalProviderCost) - totalCost);
+      } else if (transaction.type === 1 && transaction.transactiontype?.toLowerCase() === 'payable') {
+        byDate[dateKey].expense += parseFloat(transaction.totalCost) || 0;
+      }
+    });
+
+    const sortedDates = Object.keys(byDate).sort();
+    return {
+      labels: sortedDates,
+      datasets: [
+        {
+          label: 'Commission Revenue ($)',
+          data: sortedDates.map(d => byDate[d].revenue.toFixed(2)),
+          backgroundColor: '#4ade80',
+          borderRadius: 4,
+        },
+        {
+          label: 'Expense ($)',
+          data: sortedDates.map(d => byDate[d].expense.toFixed(2)),
+          backgroundColor: '#f87171',
+          borderRadius: 4,
+        },
+      ],
+    };
+  }
+
   const handleAddExpense = (expense) => {
     console.log('New expense:', expense);
     // Here you would typically update your state or send data to your backend
@@ -417,12 +454,17 @@ function MesobFinancial() {
     );
   };
 
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+
   const TransactionTable = ({ }) => {
     const filteredItems = filterItemsByTimeRange(items, selectedTimeRange);
     const sortedTransactions = [...filteredItems].sort((a, b) => {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
     const totalTransactions = sortedTransactions.length;
+    const visibleTransactions = showAllTransactions
+      ? sortedTransactions
+      : sortedTransactions.slice(0, 10);
 
     const getValueColor = (transactionType, fallback = "#fda4af") => {
       const normalizedType = String(transactionType || "").toLowerCase();
@@ -457,7 +499,7 @@ function MesobFinancial() {
             </tr>
           </thead>
           <tbody>
-            {sortedTransactions.map((transaction, index) => (
+            {visibleTransactions.map((transaction, index) => (
               <tr key={index} className={transaction.type === 1 ? "expense-row" : ""}>
                 <td>{transaction.date}</td>
                 <td>{totalTransactions - index}</td>
@@ -469,8 +511,8 @@ function MesobFinancial() {
                 ) : (
                   <td>
                     <div>Cash</div>
-                    {transaction?.generalProductsCost && transaction?.generalProductsCost !== '0.00' && <div>Payable to general provider</div>}
-                    {transaction?.sheepGoatCost && transaction?.sheepGoatCost !== '0.00' && <div>Payable to sheep provider</div>}
+                    <div>Payable to general provider</div>
+                    <div>Payable to sheep provider</div>
                     <div>Commission Revenue</div>
                   </td>
                 )}
@@ -484,8 +526,8 @@ function MesobFinancial() {
                 ) : (
                   <td className="debit">
                     <div style={valueStyle("#fde68a")}>{transaction.totalCost}$</div>
-                    {transaction?.sheepGoatCost && transaction?.sheepGoatCost !== '0.00' && <div>-</div>}
-                    {transaction?.generalProductsCost && transaction?.generalProductsCost !== '0.00' && <div>-</div>}
+                    <div>-</div>
+                    <div>-</div>
                     <div>-</div>
                   </td>
                 )}
@@ -511,12 +553,16 @@ function MesobFinancial() {
                 ) : (
                   <td className="credit">
                     <div>-</div>
-                    {transaction?.generalProductsCost && transaction?.generalProductsCost !== '0.00' && (
-                      <div style={valueStyle("#bef264")}>{transaction.generalProductsCost}$</div>
-                    )}
-                    {transaction?.sheepGoatCost && transaction?.sheepGoatCost !== '0.00' && (
-                      <div style={valueStyle("#7dd3fc")}>{transaction.sheepGoatCost}$</div>
-                    )}
+                    <div style={valueStyle("#bef264")}>
+                      {transaction?.generalProductsCost && transaction?.generalProductsCost !== '0.00'
+                        ? `${transaction.generalProductsCost}$`
+                        : '-'}
+                    </div>
+                    <div style={valueStyle("#7dd3fc")}>
+                      {transaction?.sheepGoatCost && transaction?.sheepGoatCost !== '0.00'
+                        ? `${transaction.sheepGoatCost}$`
+                        : '-'}
+                    </div>
                     <div style={valueStyle("#f9a8d4")}>
                       {(() => {
                         const sheepGoatCost = parseFloat(transaction?.sheepGoatCost || 0);
@@ -532,6 +578,18 @@ function MesobFinancial() {
             ))}
           </tbody>
         </table>
+        {totalTransactions > 10 && (
+          <div style={{ width: '100%', padding: '10px 20px', textAlign: 'center' }}>
+            <Button
+              color="secondary"
+              onClick={() => setShowAllTransactions(!showAllTransactions)}
+            >
+              {showAllTransactions
+                ? 'Show Less'
+                : `Show All ${totalTransactions} Transactions`}
+            </Button>
+          </div>
+        )}
         <div style={{ width: '100%', padding: 20, justifyContent: 'center' }}>
           <AddExpenseButton onAddExpense={handleAddExpense} />
         </div>
@@ -558,18 +616,16 @@ function MesobFinancial() {
       <div className="content">
         <Row>
           <Col xs={12}>
-            <Card>
-              <CardHeader>
-                <div style={{ display: "flex", flexDirection: 'row', paddingInline: 25, alignItems: "center", justifyContent: "space-between" }}>
-                  <CardTitle tag="h4">Journal Entry</CardTitle>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }} >
-                    <RunButtons onSelectRange={handleSelectRange} onClearFilters={handleClearFilters} />
-                    <Button color="danger" onClick={handleDeleteAllRecords} style={{ marginLeft: '10px', marginTop: 19, height: 37 }}>
-                      Close
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
+            {/* SUMMARY CARD — side-by-side: filter+totals+add-transaction on left, chart on right */}
+            <Card
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                backdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255,255,255,0.09)',
+                borderRadius: '16px',
+                boxShadow: 'none',
+              }}
+            >
               <CardBody>
                 {loading ? (
                   <div style={{ textAlign: "center", padding: "20px" }}>
@@ -577,60 +633,103 @@ function MesobFinancial() {
                     <p>Loading ...</p>
                   </div>
                 ) : (
-                  <>
-                    {selectedTimeRange && selectedTimeRange.from && selectedTimeRange.to && (
-                      <div style={{ marginBottom: '15px' }}>
-                        <strong>Searched dates:</strong> {selectedTimeRange.from} - {selectedTimeRange.to}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 24 }}>
+                    <div>
+                      <CardTitle tag="h4" style={{ color: '#fff' }}>Filter</CardTitle>
+                      <div style={{ marginBottom: 14 }}>
+                        <RunButtons onSelectRange={handleSelectRange} onClearFilters={handleClearFilters} />
                       </div>
-                    )}
-                    <TransactionTable />
-                    <div style={{ margin: 20 }}>
-                      <div style={{ display: 'inline-block', display: 'flex', flexDirection: 'row' }}>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10 }}>Total Cash on hand =</p>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10, color: '#fde68a', fontWeight: 700 }}>
-                          {calculateTotalCashOnHand(filteredItems)}$
-                        </p>
+                      <Button color="danger" onClick={handleDeleteAllRecords} style={{ marginBottom: 20 }}>
+                        Close
+                      </Button>
+                      {selectedTimeRange && selectedTimeRange.from && selectedTimeRange.to && (
+                        <div style={{ marginBottom: '15px' }}>
+                          <strong>Searched dates:</strong> {selectedTimeRange.from} - {selectedTimeRange.to}
+                        </div>
+                      )}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: '#8ea0c0' }}>Cash on Hand</div>
+                          <div style={{ fontSize: 17, fontWeight: 700, color: '#fde68a' }}>{calculateTotalCashOnHand(filteredItems)}$</div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: '#8ea0c0' }}>Payable (Unpaid)</div>
+                          <div style={{ fontSize: 17, fontWeight: 700, color: '#c4b5fd' }}>{calculateTotalPayable(filteredItems)}$</div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: '#8ea0c0' }}>Commission Revenue</div>
+                          <div style={{ fontSize: 17, fontWeight: 700, color: '#4ade80' }}>{calculateCommissionRevenue(filteredItems)}$</div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: '#8ea0c0' }}>Total Expense</div>
+                          <div style={{ fontSize: 17, fontWeight: 700, color: '#f87171' }}>{calculateTotalExpense(filteredItems)}$</div>
+                        </div>
                       </div>
-
-                      <div style={{ display: 'inline-block', display: 'flex', flexDirection: 'row' }}>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10 }}>Total Payable (Unpaid)=</p>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10, color: '#c4b5fd', fontWeight: 700 }}>
-                          {calculateTotalPayable(filteredItems)}$
-                        </p>
+                      <div style={{ marginTop: 14, fontSize: 12, color: '#8ea0c0' }}>
+                        Payable to sheep/goat = <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>{calculateSheepPayable(filteredItems)}$</span>
+                        &nbsp;&nbsp; Payable to general = <span style={{ color: '#c084fc', fontWeight: 'bold' }}>{calculateGeneralPayable(filteredItems)}$</span>
+                        &nbsp;&nbsp; Payable to misc = <span style={{ color: '#facc15', fontWeight: 'bold' }}>{calculateMiscPayable(filteredItems)}$</span>
                       </div>
-                      <div style={{ display: 'flex', marginLeft: 20, flexDirection: 'row', gap: '20px' }}>
-                        <p style={{ fontSize: 12 }}>Payable to sheep/goat = <span style={{ padding: 10, color: '#60a5fa', fontWeight: 'bold' }}>{calculateSheepPayable(filteredItems)}$</span></p>
-                        <p style={{ fontSize: 12 }}>Payable to general = <span style={{ padding: 10, color: '#c084fc', fontWeight: 'bold' }}>{calculateGeneralPayable(filteredItems)}$</span></p>
-                        <p style={{ fontSize: 12 }}>Payable to miscellaneous = <span style={{ padding: 10, color: '#facc15', fontWeight: 'bold' }}>{calculateMiscPayable(filteredItems)}$</span></p>
+                      <div style={{ textAlign: 'center', marginTop: 20 }}>
+                        <AddExpenseButton onAddExpense={handleAddExpense} />
                       </div>
-
-                      <div style={{ display: 'inline-block', display: 'flex', flexDirection: 'row' }}>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10 }}>Commission Revenue =</p>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10, color: '#f9a8d4', fontWeight: 700 }}>
-                          {calculateCommissionRevenue(filteredItems)}$
-                        </p>
-                      </div>
-
-                      <div style={{ display: 'inline-block', display: 'flex', flexDirection: 'row' }}>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10 }}>Total Expense  =</p>
-                        <p style={{ borderWidth: 5, borderColor: 'grey', padding: 10, color: '#fda4af', fontWeight: 700 }}>
-                          {calculateTotalExpense(filteredItems)}$
-                        </p>
-                      </div>
-
                     </div>
-                  </>
+                    <div>
+                      <CardTitle tag="h4" style={{ color: '#fff' }}>Revenue vs Expense</CardTitle>
+                      {filteredItems.length > 0 ? (
+                        <Bar
+                          data={getRevenueExpenseChartData(filteredItems)}
+                          options={{
+                            responsive: true,
+                            plugins: {
+                              legend: { labels: { color: 'rgba(255,255,255,0.7)' } },
+                            },
+                            scales: {
+                              x: {
+                                ticks: { color: 'rgba(255,255,255,0.45)' },
+                                grid: { color: 'rgba(255,255,255,0.06)' },
+                              },
+                              y: {
+                                beginAtZero: true,
+                                ticks: {
+                                  color: 'rgba(255,255,255,0.45)',
+                                  callback: (v) => '$' + Number(v).toLocaleString(),
+                                },
+                                grid: { color: 'rgba(255,255,255,0.06)' },
+                              },
+                            },
+                          }}
+                        />
+                      ) : (
+                        <p style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                          No transaction data for this period
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 )}
               </CardBody>
             </Card>
+
+            {/* JOURNAL ENTRY — table only, collapsible to 10 rows */}
             <Card>
               <CardHeader>
-                <IncomeStatement items={filteredItems} />
+                <CardTitle tag="h4">Journal Entry</CardTitle>
+              </CardHeader>
+              <CardBody>
+                {!loading && <TransactionTable />}
+              </CardBody>
+            </Card>
+
+            {/* BALANCE SHEET, then INCOME STATEMENT */}
+            <Card>
+              <CardHeader>
+                <BalanceSheet items={filteredItems} />
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
-                <BalanceSheet items={filteredItems} />
+                <IncomeStatement items={filteredItems} />
               </CardHeader>
             </Card>
           </Col>

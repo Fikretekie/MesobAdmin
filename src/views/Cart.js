@@ -29,10 +29,71 @@ import "react-notification-alert/dist/animate.css";
 import formatUserId from "utils/formatUID";
 import { Editor } from "@tinymce/tinymce-react";
 
+// Lives outside the component so it survives navigating away and back.
+const cartPageCache = { items: null };
+
 function Cart() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(cartPageCache.items ?? []);
+  const [loading, setLoading] = useState(!cartPageCache.items);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const tableCustomStyles = {
+    table: {
+      style: {
+        background: "transparent",
+      },
+    },
+    headRow: {
+      style: {
+        background: "rgba(255,255,255,0.02)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        minHeight: "44px",
+      },
+    },
+    headCells: {
+      style: {
+        color: "rgba(255,255,255,0.45)",
+        fontSize: "11px",
+        textTransform: "uppercase",
+        letterSpacing: "0.4px",
+        fontWeight: 600,
+      },
+    },
+    rows: {
+      style: {
+        background: "transparent",
+        color: "rgba(255,255,255,0.85)",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        minHeight: "52px",
+        "&:hover": {
+          background: "rgba(255,255,255,0.04)",
+        },
+      },
+    },
+    pagination: {
+      style: {
+        background: "transparent",
+        color: "rgba(255,255,255,0.6)",
+        borderTop: "1px solid rgba(255,255,255,0.08)",
+      },
+      pageButtonsStyle: {
+        color: "rgba(255,255,255,0.6)",
+        fill: "rgba(255,255,255,0.6)",
+        "&:disabled": {
+          fill: "rgba(255,255,255,0.2)",
+        },
+        "&:hover:not(:disabled)": {
+          background: "rgba(255,255,255,0.08)",
+        },
+      },
+    },
+    noData: {
+      style: {
+        background: "transparent",
+        color: "rgba(255,255,255,0.4)",
+      },
+    },
+  };
 
   // For single user
   const [selectedUser, setSelectedUser] = useState(null); // User data for modal
@@ -67,11 +128,16 @@ function Cart() {
   };
 
   useEffect(() => {
+    // Already have this from a previous visit — skip refetching
+    if (cartPageCache.items) {
+      return;
+    }
     axios
       .get("https://2uys9kc217.execute-api.us-east-1.amazonaws.com/dev/users")
       .then((response) => {
         if (response.data) {
           setItems(response.data.Items);
+          cartPageCache.items = response.data.Items;
         }
         setLoading(false);
       })
@@ -235,13 +301,21 @@ function Cart() {
     {
       name: "Cart Items",
       cell: (row) => (
-        <Button
+        <button
           onClick={() => handleView(row)}
-          color="info"
-          className="btn-round btn-sm"
+          style={{
+            background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
+            color: "#0a0612",
+            border: "none",
+            borderRadius: "20px",
+            padding: "6px 16px",
+            fontSize: "11.5px",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
         >
-          {"View"}
-        </Button>
+          View
+        </button>
       ),
       ignoreRowClick: true,
       allowOverflow: true,
@@ -288,41 +362,82 @@ function Cart() {
         }
       />
       <NotificationAlert ref={notificationAlertRef} />
-      <div className="content">
+      <div
+        className="content"
+        style={{
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
+        }}
+      >
         <Row>
           <Col xs={12}>
-            <Card>
-              <CardHeader>
+            <Card
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: "16px",
+                boxShadow: "none",
+              }}
+            >
+              <CardHeader style={{ borderBottom: "none" }}>
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 10,
                   }}
                 >
-                  <CardTitle tag="h4">Cart</CardTitle>
+                  <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
+                    Cart
+                  </CardTitle>
                   <Input
                     type="text"
                     placeholder="Search by email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ marginLeft: "10px", width: "250px" }}
+                    style={{
+                      marginLeft: "10px",
+                      width: "250px",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#fff",
+                      borderRadius: "10px",
+                    }}
                   />
-                  <Button
-                    color="secondary"
-                    className="btn-round"
+                  <button
                     onClick={handleViewEmails}
                     disabled={selectedUsers.length === 0}
+                    style={{
+                      background:
+                        selectedUsers.length === 0
+                          ? "rgba(255,255,255,0.06)"
+                          : "linear-gradient(90deg, #34d399, #10b981)",
+                      color:
+                        selectedUsers.length === 0
+                          ? "rgba(255,255,255,0.35)"
+                          : "#06281c",
+                      border: "none",
+                      borderRadius: "20px",
+                      padding: "9px 16px",
+                      fontSize: "12.5px",
+                      fontWeight: 700,
+                      cursor:
+                        selectedUsers.length === 0 ? "not-allowed" : "pointer",
+                    }}
                   >
                     Send Email to Selected Emails
-                  </Button>
+                  </button>
                 </div>
               </CardHeader>
               <CardBody>
                 {loading ? (
                   <div style={{ textAlign: "center", padding: "20px" }}>
                     <Spinner color="primary" />
-                    <p>Loading cart...</p>
+                    <p style={{ color: "rgba(255,255,255,0.6)" }}>Loading cart...</p>
                   </div>
                 ) : (
                   <DataTable
@@ -336,6 +451,7 @@ function Cart() {
                     paginationPerPage={100}
                     paginationRowsPerPageOptions={[100, 200, 300, 500, 1000]}
                     highlightOnHover
+                    customStyles={tableCustomStyles}
                   />
                 )}
               </CardBody>

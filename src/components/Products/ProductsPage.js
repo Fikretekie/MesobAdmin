@@ -44,9 +44,16 @@ const API_BASE =
   process.env.REACT_APP_MESOB_API_BASE ||
   "https://2uys9kc217.execute-api.us-east-1.amazonaws.com/dev";
 
+// Lives outside the component so it survives navigating away and back.
+const productsPageCache = {
+  products: null,
+  categories: null,
+  allSubCategories: null,
+};
+
 function Products() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(productsPageCache.products ?? []);
+  const [loading, setLoading] = useState(!productsPageCache.products);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,7 +65,7 @@ function Products() {
   const [error, setError] = useState("");
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(productsPageCache.categories ?? []);
   const [subCategories, setSubCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingSubCategories, setLoadingSubCategories] = useState(false);
@@ -67,7 +74,7 @@ function Products() {
   const [selectedSubCategoryFilter, setSelectedSubCategoryFilter] = useState(null);
   const [filterSubCategories, setFilterSubCategories] = useState([]);
   const [loadingFilterSubCategories, setLoadingFilterSubCategories] = useState(false);
-  const [allSubCategories, setAllSubCategories] = useState([]); // Store all subcategories for filtering
+  const [allSubCategories, setAllSubCategories] = useState(productsPageCache.allSubCategories ?? []); // Store all subcategories for filtering
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [loadingApprovals, setLoadingApprovals] = useState(false);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
@@ -301,6 +308,12 @@ function Products() {
   ]);
 
   const fetchProducts = useCallback(async () => {
+    // Already have this from a previous visit — skip refetching
+    if (productsPageCache.products) {
+      setProducts(productsPageCache.products);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -312,6 +325,7 @@ function Products() {
         )
       );
       setProducts(sorted);
+      productsPageCache.products = sorted;
     } catch (err) {
       console.error("Failed to load products", err);
       setError("Unable to load products. Please try again later.");
@@ -321,6 +335,11 @@ function Products() {
   }, []);
 
   const fetchCategories = useCallback(async () => {
+    // Already have this from a previous visit — skip refetching
+    if (productsPageCache.categories) {
+      setCategories(productsPageCache.categories);
+      return;
+    }
     setLoadingCategories(true);
     try {
       const response = await axios.get(`${API_BASE}/categories`);
@@ -329,6 +348,7 @@ function Products() {
         (a.name || "").localeCompare(b.name || "")
       );
       setCategories(sorted);
+      productsPageCache.categories = sorted;
     } catch (err) {
       console.error("Failed to load categories", err);
       setCategories([]);
@@ -339,6 +359,11 @@ function Products() {
 
   // Fetch all subcategories for filtering
   const fetchAllSubCategories = useCallback(async () => {
+    // Already have this from a previous visit — skip refetching
+    if (productsPageCache.allSubCategories) {
+      setAllSubCategories(productsPageCache.allSubCategories);
+      return;
+    }
     try {
       // Fetch subcategories for each category
       const allSubs = [];
@@ -354,6 +379,7 @@ function Products() {
         }
       }
       setAllSubCategories(allSubs);
+      productsPageCache.allSubCategories = allSubs;
     } catch (err) {
       console.error("Failed to load all subcategories", err);
       setAllSubCategories([]);
@@ -727,20 +753,32 @@ function Products() {
           </div>
         }
       />
-      <div className="content">
+      <div
+        className="content"
+        style={{
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
+        }}
+      >
         <Row>
           <Col xs={12}>
-            <Card>
+            <Card
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: "16px",
+                boxShadow: "none",
+              }}
+            >
               <CardHeader
                 className="d-flex flex-column flex-md-row align-items-md-center justify-content-between"
-                style={{ gap: "1rem" }}
+                style={{ gap: "1rem", borderBottom: "none" }}
               >
                 <div style={{ whiteSpace: "nowrap" }}>
-                  {/* <CardTitle tag="h4" className="mb-0">
-                    Products 
-                  </CardTitle> */}
                   {!isSeller && (
-                    <small className="text-muted">
+                    <small style={{ color: "rgba(255,255,255,0.45)" }}>
                       {filteredProducts.length} of {products.length} Products
                     </small>
                   )}
@@ -758,46 +796,57 @@ function Products() {
                       height: "44px",
                       padding: "0.35rem 0.85rem",
                       fontSize: "0.95rem",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#fff",
+                      borderRadius: "10px",
                     }}
                   />
                   {isSeller ? (
-                    <Button
-                      color="info"
-                      className="btn-round"
+                    <button
                       onClick={() => navigate(`${basePath}/seller-products`)}
                       style={{
                         height: "44px",
                         padding: "0.35rem 1.2rem",
-                        fontSize: "0.9rem",
+                        fontSize: "12.5px",
                         whiteSpace: "nowrap",
+                        background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
+                        color: "#0a0612",
+                        border: "none",
+                        borderRadius: "22px",
+                        fontWeight: 700,
+                        cursor: "pointer",
                       }}
                     >
                       <FaPlus style={{ marginRight: "0.5rem" }} /> Manage
                       Products
-                    </Button>
+                    </button>
                   ) : (
-                    <Button
-                      color="primary"
-                      className="btn-round"
+                    <button
                       onClick={handleAddNew}
                       style={{
                         height: "44px",
                         padding: "0.35rem 1.2rem",
-                        fontSize: "0.9rem",
+                        fontSize: "12.5px",
                         whiteSpace: "nowrap",
+                        background: "linear-gradient(90deg, #34d399, #10b981)",
+                        color: "#06281c",
+                        border: "none",
+                        borderRadius: "22px",
+                        fontWeight: 700,
+                        cursor: "pointer",
                       }}
                     >
                       <FaPlus style={{ marginRight: "0.5rem" }} /> Add Product
-                    </Button>
+                    </button>
                   )}
                 </div>
               </CardHeader>
               {/* Category Filter Tabs */}
               <div style={{
                 padding: "1rem",
-                borderBottom: "1px solid rgba(125, 145, 180, 0.12)",
-                background:
-                  "linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%)"
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.02)"
               }}>
                 <div style={{ marginBottom: filterSubCategories.length > 0 ? "0.75rem" : "0" }}>
                   <div style={{
@@ -806,12 +855,10 @@ function Products() {
                     gap: "0.5rem",
                     alignItems: "center"
                   }}>
-                    <small className="text-muted" style={{ marginRight: "0.5rem", fontWeight: "500" }}>
+                    <small style={{ marginRight: "0.5rem", fontWeight: "500", color: "rgba(255,255,255,0.45)" }}>
                       Categories:
                     </small>
-                    <Button
-                      size="sm"
-                      color={selectedCategoryFilter === null ? "primary" : "light"}
+                    <button
                       onClick={() => {
                         setSelectedCategoryFilter(null);
                         // Only clear subcategory filter if no subcategory is selected
@@ -824,133 +871,125 @@ function Products() {
                         setFilterSubCategories([]);
                       }}
                       style={{
-                        fontSize: "0.85rem",
-                        padding: "0.25rem 0.75rem",
-                        backgroundColor:
+                        fontSize: "11.5px",
+                        padding: "7px 14px",
+                        borderRadius: "18px",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        background:
                           selectedCategoryFilter === null
-                            ? undefined
-                            : "rgba(148, 163, 184, 0.12)",
+                            ? "linear-gradient(90deg, #a78bfa, #60a5fa)"
+                            : "rgba(255,255,255,0.06)",
+                        color:
+                          selectedCategoryFilter === null
+                            ? "#0a0612"
+                            : "rgba(255,255,255,0.65)",
                         borderColor:
                           selectedCategoryFilter === null
-                            ? undefined
-                            : "rgba(125, 145, 180, 0.18)",
-                        color:
-                          selectedCategoryFilter === null ? undefined : "#dbe7ff",
-                        fontWeight: selectedCategoryFilter === null ? "500" : "400",
+                            ? "transparent"
+                            : "rgba(255,255,255,0.1)",
                       }}
                     >
                       All
-                    </Button>
+                    </button>
                     {categories.map((category) => (
-                      <Button
+                      <button
                         key={category.id}
-                        size="sm"
-                        color={selectedCategoryFilter === String(category.id) ? "primary" : "light"}
                         onClick={() => handleCategoryFilterClick(String(category.id))}
                         disabled={loadingFilterSubCategories}
                         style={{
-                          fontSize: "0.85rem",
-                          padding: "0.25rem 0.75rem",
-                          backgroundColor:
+                          fontSize: "11.5px",
+                          padding: "7px 14px",
+                          borderRadius: "18px",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          background:
                             selectedCategoryFilter === String(category.id)
-                              ? undefined
-                              : "rgba(148, 163, 184, 0.12)",
-                          borderColor:
-                            selectedCategoryFilter === String(category.id)
-                              ? undefined
-                              : "rgba(125, 145, 180, 0.18)",
+                              ? "linear-gradient(90deg, #a78bfa, #60a5fa)"
+                              : "rgba(255,255,255,0.06)",
                           color:
                             selectedCategoryFilter === String(category.id)
-                              ? undefined
-                              : "#dbe7ff",
-                          fontWeight: selectedCategoryFilter === String(category.id) ? "500" : "400",
+                              ? "#0a0612"
+                              : "rgba(255,255,255,0.65)",
+                          borderColor:
+                            selectedCategoryFilter === String(category.id)
+                              ? "transparent"
+                              : "rgba(255,255,255,0.1)",
                         }}
                       >
                         {category.name || `Category ${category.id}`}
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 </div>
-                {/* Subcategory Filter Tabs - Always show all subcategories */}
-                {allSubCategories.length > 0 && (
+                {/* Subcategory Filter Tabs - only shows subcategories under the selected category */}
+                {selectedCategoryFilter && filterSubCategories.length > 0 && (
                   <div style={{
                     display: "flex",
                     flexWrap: "wrap",
                     gap: "0.5rem",
                     alignItems: "center",
                     paddingTop: "0.75rem",
-                    borderTop: "1px solid rgba(125, 145, 180, 0.12)",
+                    borderTop: "1px solid rgba(255,255,255,0.08)",
                     marginTop: "0.75rem"
                   }}>
-                    <small className="text-muted" style={{ marginRight: "0.5rem", fontWeight: "500" }}>
+                    <small style={{ marginRight: "0.5rem", fontWeight: "500", color: "rgba(255,255,255,0.45)" }}>
                       Subcategories:
                     </small>
-                    <Button
-                      size="sm"
-                      color={selectedSubCategoryFilter === null ? "info" : "light"}
-                      onClick={() => {
-                        setSelectedSubCategoryFilter(null);
-                        // If a category is selected, keep it; otherwise clear both filters
-                        if (!selectedCategoryFilter) {
-                          setSelectedCategoryFilter(null);
-                        }
-                      }}
+                    <button
+                      onClick={() => setSelectedSubCategoryFilter(null)}
                       style={{
-                        fontSize: "0.85rem",
-                        padding: "0.25rem 0.75rem",
-                        backgroundColor:
+                        fontSize: "11px",
+                        padding: "5px 12px",
+                        borderRadius: "16px",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        background:
                           selectedSubCategoryFilter === null
-                            ? undefined
-                            : "rgba(148, 163, 184, 0.12)",
-                        borderColor:
-                          selectedSubCategoryFilter === null
-                            ? undefined
-                            : "rgba(125, 145, 180, 0.18)",
+                            ? "rgba(244,114,182,0.15)"
+                            : "rgba(255,255,255,0.04)",
                         color:
                           selectedSubCategoryFilter === null
-                            ? undefined
-                            : "#dbe7ff",
-                        fontWeight: selectedSubCategoryFilter === null ? "500" : "400",
+                            ? "#f9a8d4"
+                            : "rgba(255,255,255,0.55)",
+                        borderColor:
+                          selectedSubCategoryFilter === null
+                            ? "rgba(244,114,182,0.5)"
+                            : "rgba(255,255,255,0.08)",
                       }}
                     >
                       All
-                    </Button>
-                    {allSubCategories.map((subCategory) => (
-                      <Button
+                    </button>
+                    {filterSubCategories.map((subCategory) => (
+                      <button
                         key={subCategory.id}
-                        size="sm"
-                        color={selectedSubCategoryFilter === String(subCategory.id) ? "info" : "light"}
-                        onClick={() => {
-                          handleSubCategoryFilterClick(String(subCategory.id));
-                          // When a subcategory is selected, optionally auto-select its parent category
-                          if (subCategory.Menu_id && Array.isArray(subCategory.Menu_id) && subCategory.Menu_id.length > 0) {
-                            const parentCategoryId = String(subCategory.Menu_id[0]);
-                            if (!selectedCategoryFilter || selectedCategoryFilter !== parentCategoryId) {
-                              setSelectedCategoryFilter(parentCategoryId);
-                              fetchFilterSubCategories(parentCategoryId);
-                            }
-                          }
-                        }}
+                        onClick={() => handleSubCategoryFilterClick(String(subCategory.id))}
                         style={{
-                          fontSize: "0.85rem",
-                          padding: "0.25rem 0.75rem",
-                          backgroundColor:
+                          fontSize: "11px",
+                          padding: "5px 12px",
+                          borderRadius: "16px",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          background:
                             selectedSubCategoryFilter === String(subCategory.id)
-                              ? undefined
-                              : "rgba(148, 163, 184, 0.12)",
-                          borderColor:
-                            selectedSubCategoryFilter === String(subCategory.id)
-                              ? undefined
-                              : "rgba(125, 145, 180, 0.18)",
+                              ? "rgba(244,114,182,0.15)"
+                              : "rgba(255,255,255,0.04)",
                           color:
                             selectedSubCategoryFilter === String(subCategory.id)
-                              ? undefined
-                              : "#dbe7ff",
-                          fontWeight: selectedSubCategoryFilter === String(subCategory.id) ? "500" : "400",
+                              ? "#f9a8d4"
+                              : "rgba(255,255,255,0.55)",
+                          borderColor:
+                            selectedSubCategoryFilter === String(subCategory.id)
+                              ? "rgba(244,114,182,0.5)"
+                              : "rgba(255,255,255,0.08)",
                         }}
                       >
                         {subCategory.name || `Subcategory ${subCategory.id}`}
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1054,6 +1093,59 @@ function Products() {
                     noDataComponent="No products found."
                     fixedHeader
                     onRowClicked={handleRowClick}
+                    customStyles={{
+                      table: {
+                        style: { background: "transparent" },
+                      },
+                      headRow: {
+                        style: {
+                          background: "rgba(255,255,255,0.02)",
+                          borderBottom: "1px solid rgba(255,255,255,0.08)",
+                          minHeight: "44px",
+                        },
+                      },
+                      headCells: {
+                        style: {
+                          color: "rgba(255,255,255,0.45)",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.4px",
+                          fontWeight: 600,
+                        },
+                      },
+                      rows: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.85)",
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          minHeight: "60px",
+                          "&:hover": {
+                            background: "rgba(255,255,255,0.04)",
+                          },
+                        },
+                      },
+                      pagination: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.6)",
+                          borderTop: "1px solid rgba(255,255,255,0.08)",
+                        },
+                        pageButtonsStyle: {
+                          color: "rgba(255,255,255,0.6)",
+                          fill: "rgba(255,255,255,0.6)",
+                          "&:disabled": { fill: "rgba(255,255,255,0.2)" },
+                          "&:hover:not(:disabled)": {
+                            background: "rgba(255,255,255,0.08)",
+                          },
+                        },
+                      },
+                      noData: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.4)",
+                        },
+                      },
+                    }}
                   />
                 )}
               </CardBody>
@@ -1207,4 +1299,3 @@ function Products() {
 }
 
 export default Products;
-

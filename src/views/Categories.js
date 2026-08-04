@@ -399,7 +399,7 @@ function Categories() {
     {
       name: "ID",
       selector: (row) => (row.type === "category" ? row.categoryId : row.subCategoryId) || "-",
-      sortable: true,
+      sortable: false,
       width: "150px",
       cell: (row) => {
         if (row.type === "category" || row.type === "subcategory") {
@@ -411,7 +411,7 @@ function Categories() {
     {
       name: "Subcategories Count",
       selector: (row) => (row.type === "category" ? (row.subcategories?.length || 0) : "-"),
-      sortable: true,
+      sortable: false,
       width: "180px",
       cell: (row) => {
         if (row.type === "category") {
@@ -443,16 +443,31 @@ function Categories() {
           </div>
         }
       />
-      <div className="content">
+      <div
+        className="content"
+        style={{
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
+        }}
+      >
         <Row>
           <Col xs={12}>
-            <Card>
+            <Card
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: "16px",
+                boxShadow: "none",
+              }}
+            >
               <CardHeader
                 className="d-flex flex-column flex-md-row align-items-md-center justify-content-between"
-                style={{ gap: "1rem" }}
+                style={{ gap: "1rem", borderBottom: "none" }}
               >
                 <div style={{ whiteSpace: "nowrap" }}>
-                  <small className="text-muted">
+                  <small style={{ color: "rgba(255,255,255,0.45)" }}>
                     {categories.length} Total Categories
                   </small>
                 </div>
@@ -469,21 +484,29 @@ function Categories() {
                       height: "44px",
                       padding: "0.35rem 0.85rem",
                       fontSize: "0.95rem",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#fff",
+                      borderRadius: "10px",
                     }}
                   />
-                  <Button
-                    color="primary"
-                    className="btn-round"
+                  <button
                     onClick={handleAddCategory}
                     style={{
                       height: "44px",
                       padding: "0.35rem 1.2rem",
-                      fontSize: "0.9rem",
+                      fontSize: "12.5px",
                       whiteSpace: "nowrap",
+                      background: "linear-gradient(90deg, #34d399, #10b981)",
+                      color: "#06281c",
+                      border: "none",
+                      borderRadius: "22px",
+                      fontWeight: 700,
+                      cursor: "pointer",
                     }}
                   >
                     <FaPlus style={{ marginRight: "0.5rem" }} /> Add Category
-                  </Button>
+                  </button>
                 </div>
               </CardHeader>
               <CardBody>
@@ -495,7 +518,7 @@ function Categories() {
                 {loading ? (
                   <div className="text-center py-5">
                     <Spinner color="primary" />
-                    <p className="mt-2 mb-0">Loading categories...</p>
+                    <p style={{ color: "rgba(255,255,255,0.6)" }}>Loading categories...</p>
                   </div>
                 ) : (
                   <DataTable
@@ -508,6 +531,59 @@ function Categories() {
                     paginationRowsPerPageOptions={[25, 50, 100]}
                     noDataComponent="No categories found."
                     fixedHeader
+                    customStyles={{
+                      table: {
+                        style: { background: "transparent" },
+                      },
+                      headRow: {
+                        style: {
+                          background: "rgba(255,255,255,0.02)",
+                          borderBottom: "1px solid rgba(255,255,255,0.08)",
+                          minHeight: "44px",
+                        },
+                      },
+                      headCells: {
+                        style: {
+                          color: "rgba(255,255,255,0.45)",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.4px",
+                          fontWeight: 600,
+                        },
+                      },
+                      rows: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.85)",
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          minHeight: "52px",
+                          "&:hover": {
+                            background: "rgba(255,255,255,0.04)",
+                          },
+                        },
+                      },
+                      pagination: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.6)",
+                          borderTop: "1px solid rgba(255,255,255,0.08)",
+                        },
+                        pageButtonsStyle: {
+                          color: "rgba(255,255,255,0.6)",
+                          fill: "rgba(255,255,255,0.6)",
+                          "&:disabled": { fill: "rgba(255,255,255,0.2)" },
+                          "&:hover:not(:disabled)": {
+                            background: "rgba(255,255,255,0.08)",
+                          },
+                        },
+                      },
+                      noData: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.4)",
+                        },
+                      },
+                    }}
                   />
                 )}
               </CardBody>
@@ -541,4 +617,3 @@ function Categories() {
 }
 
 export default Categories;
-

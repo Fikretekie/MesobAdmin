@@ -56,12 +56,6 @@ export const buildColumns = (onEdit, onDelete, isSeller = false) => {
       width: "200px",
     },
     {
-      name: "Category",
-      selector: (row) => row.category || "-",
-      sortable: true,
-      width: "160px",
-    },
-    {
       name: "Subcategory",
       selector: (row) => {
         // Try to get subcategory name first
@@ -96,21 +90,6 @@ export const buildColumns = (onEdit, onDelete, isSeller = false) => {
       width: "160px",
     },
     {
-      name: "Description",
-      selector: (row) => row.content?.description || "-",
-      cell: (row) => {
-        const desc = row.content?.description || "-";
-        return (
-          <div style={{ maxWidth: "300px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={desc}>
-            {desc}
-          </div>
-        );
-      },
-      sortable: false,
-      wrap: false,
-      width: "300px",
-    },
-    {
       name: "Country",
       selector: (row) => row.country || "-",
       sortable: true,
@@ -131,22 +110,6 @@ export const buildColumns = (onEdit, onDelete, isSeller = false) => {
       width: "130px",
     },
     {
-      name: "Off %",
-      selector: (row) => row.off_percentage || "-",
-      width: "100px",
-    },
-    {
-      name: "Recommended",
-      selector: (row) => row.isRecommended,
-      cell: (row) =>
-        row.isRecommended ? (
-          <Badge color="success">Yes</Badge>
-        ) : (
-          <Badge color="secondary">No</Badge>
-        ),
-      width: "140px",
-    },
-    {
       name: "Updated",
       selector: (row) => row.updatedAt,
       cell: (row) =>
@@ -160,46 +123,45 @@ export const buildColumns = (onEdit, onDelete, isSeller = false) => {
         const editId = `edit-${sanitizeIdForSelector(row.id)}`;
         const deleteId = `delete-${sanitizeIdForSelector(row.id)}`;
         return (
-          <div className="d-flex align-items-center" style={{ gap: "0.4rem" }}>
-            <Button
+          <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
+            <button
               id={editId}
-              color="link"
-              size="sm"
-              className="btn-round btn-icon"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(row);
               }}
               aria-label="Edit product"
               style={{
-                backgroundColor: "transparent",
+                background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
                 border: "none",
-                padding: "0.25rem 0.5rem",
+                borderRadius: "10px",
+                padding: "0.4rem 0.6rem",
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
               }}
             >
-              <FaEdit size={14} color="#17a2b8" />
-            </Button>
-            {/* <UncontrolledTooltip target={editId}>
-              Edit or duplicate product
-            </UncontrolledTooltip> */}
-            <Button
+              <FaEdit size={16} color="#0a0612" />
+            </button>
+            <button
               id={deleteId}
-              color="link"
-              size="sm"
-              className="btn-round btn-icon"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(row);
               }}
               aria-label="Delete product"
               style={{
-                backgroundColor: "transparent",
-                border: "none",
-                padding: "0.25rem 0.5rem",
+                background: "rgba(244,114,182,0.15)",
+                border: "1px solid rgba(244,114,182,0.4)",
+                borderRadius: "10px",
+                padding: "0.4rem 0.6rem",
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
               }}
             >
-              <FaTrash size={13} color="#dc3545" />
-            </Button>
+              <FaTrash size={15} color="#f9a8d4" />
+            </button>
             {/* <UncontrolledTooltip target={deleteId}>
               Remove product from catalog
             </UncontrolledTooltip> */}
@@ -219,4 +181,3 @@ export const buildColumns = (onEdit, onDelete, isSeller = false) => {
 
   return allColumns;
 };
-

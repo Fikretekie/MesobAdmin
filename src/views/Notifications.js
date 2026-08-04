@@ -133,24 +133,49 @@ const handleNotificationSend = async (e) => {
         }
       />
       <NotificationAlert ref={notificationAlertRef} />
-      <div className="content">
+      <div
+        className="content"
+        style={{
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
+        }}
+      >
         <Row>
           <Col md="12">
-            <Card>
-              <CardHeader>
-                {/* <h5 className="title">Notifications</h5> */}
+            <Card
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: "16px",
+                boxShadow: "none",
+              }}
+            >
+              <CardHeader style={{ borderBottom: "none" }}>
+                <h5 style={{ color: "#fff", margin: 0 }}>
+                  Compose Notification
+                </h5>
               </CardHeader>
               <CardBody>
                 <Form>
                   <Row>
                     <Col className="pr-1" md="12">
                       <FormGroup>
-                        <label>Title</label>
+                        <label style={{ color: "rgba(255,255,255,0.55)" }}>
+                          Title
+                        </label>
                         <Input
                           placeholder="Title"
                           type="text"
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            color: "#fff",
+                            borderRadius: "10px",
+                          }}
                         />
                       </FormGroup>
                     </Col>
@@ -158,9 +183,11 @@ const handleNotificationSend = async (e) => {
                   <Row>
                     <Col md="12">
                       <FormGroup>
-                        <label>Body</label>  {/* ✅ renamed from Description */}
+                        <label style={{ color: "rgba(255,255,255,0.55)" }}>
+                          Body
+                        </label>
                         <Editor
-                          apiKey={process.env.REACT_APP_TINYMCE_API_KEY}
+                          tinymceScriptSrc={`${process.env.PUBLIC_URL}/tinymce/tinymce.min.js`}
                           onInit={(evt, editor) => (editorRef.current = editor)}
                           initialValue=""
                           init={{
@@ -169,6 +196,7 @@ const handleNotificationSend = async (e) => {
                             skin: "oxide-dark",
                             content_css: "dark",
                             branding: false,
+                            promotion: false,
                             plugins: [
                               "advlist autolink lists link image charmap print preview anchor",
                               "searchreplace visualblocks code fullscreen",
@@ -177,9 +205,9 @@ const handleNotificationSend = async (e) => {
                             ],
                             toolbar:
                               "undo redo | formatselect | " +
-                              "bold italic backcolor | alignleft aligncenter " +
+                              "bold italic forecolor backcolor | alignleft aligncenter " +
                               "alignright alignjustify | bullist numlist outdent indent | " +
-                              "removeformat",
+                              "link image | removeformat",
                             placeholder: "Write your message here...",
                             content_style:
                               "body { background: #0f172a; color: #e8f1ff; font-family: Helvetica, Arial, sans-serif; }",
@@ -191,9 +219,29 @@ const handleNotificationSend = async (e) => {
                   </Row>
                   <Row>
                     <Col md="12">
+                      <style>{`
+                        .notif-send-btn {
+                          background: linear-gradient(90deg, #a78bfa, #60a5fa) !important;
+                          color: #0a0612 !important;
+                          border: none !important;
+                          border-radius: 20px !important;
+                          font-weight: 700 !important;
+                          box-shadow: none !important;
+                        }
+                        .notif-send-btn:hover,
+                        .notif-send-btn:focus,
+                        .notif-send-btn:active {
+                          background: linear-gradient(90deg, #a78bfa, #60a5fa) !important;
+                          color: #0a0612 !important;
+                          box-shadow: none !important;
+                        }
+                        .notif-send-btn:disabled {
+                          background: rgba(255,255,255,0.06) !important;
+                          color: rgba(255,255,255,0.35) !important;
+                        }
+                      `}</style>
                       <Button
-                        color="info"
-                        className="btn-round"
+                        className="notif-send-btn"
                         onClick={handleNotificationSend}
                         disabled={sendNotificationBtnLoading}
                       >

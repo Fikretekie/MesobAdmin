@@ -52,31 +52,55 @@ import { Helmet } from "react-helmet";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import { Line } from 'react-chartjs-2';
+import { Line, Doughnut } from 'react-chartjs-2';
 
 const API_URL = "https://2uys9kc217.execute-api.us-east-1.amazonaws.com/dev";
 
+// Lives outside the component so it survives navigating away and back
+// (React unmounts Dashboard entirely on route change, which would
+// otherwise wipe all state and force a full reload every time).
+const dashboardPageCache = {
+  totalStats: null,
+  users: null,
+  products: null,
+  categories: null,
+  subcategories: null,
+  analyticsByFilter: {},
+};
+
 function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [Users, setUsers] = useState([]);
-  const [totalStats, setTotalStats] = useState({
-    totalOrders: 0,
-    totalSales: 0,
-    totalCost: 0,
-    totalCustomers: 0
-  });
+  const [loading, setLoading] = useState(!dashboardPageCache.totalStats);
+  const [Users, setUsers] = useState(dashboardPageCache.users ?? []);
+  const [totalStats, setTotalStats] = useState(
+    dashboardPageCache.totalStats || {
+      totalOrders: 0,
+      totalSales: 0,
+      totalCost: 0,
+      totalCustomers: 0
+    }
+  );
 
   // Analytics state
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [revenueData, setRevenueData] = useState(null);
-  const [purchaseData, setPurchaseData] = useState(null);
-  const [userData, setUserData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(
+    !dashboardPageCache.analyticsByFilter["all"]
+  );
+  const [dashboardData, setDashboardData] = useState(
+    dashboardPageCache.analyticsByFilter["all"]?.dashboard || null
+  );
+  const [revenueData, setRevenueData] = useState(
+    dashboardPageCache.analyticsByFilter["all"]?.revenue || null
+  );
+  const [purchaseData, setPurchaseData] = useState(
+    dashboardPageCache.analyticsByFilter["all"]?.purchases || null
+  );
+  const [userData, setUserData] = useState(
+    dashboardPageCache.analyticsByFilter["all"]?.users || null
+  );
   const [activeTab, setActiveTab] = useState(0);
   const [timeFilter, setTimeFilter] = useState("all"); // "all", "daily", "weekly", "monthly", "yearly"
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
+  const [products, setProducts] = useState(dashboardPageCache.products ?? []);
+  const [categories, setCategories] = useState(dashboardPageCache.categories ?? []);
+  const [subcategories, setSubcategories] = useState(dashboardPageCache.subcategories ?? []);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewsModalOpen, setViewsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -113,6 +137,10 @@ function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Already have this from a previous visit — skip refetching
+    if (dashboardPageCache.totalStats) {
+      return;
+    }
     // Fetch dashboard totals from /dashboard endpoint
     axios
       .get("https://2uys9kc217.execute-api.us-east-1.amazonaws.com/dev/dashboard")
@@ -120,12 +148,14 @@ function Dashboard() {
         if (response.data) {
           console.log('dashboard totals=>>>>>', response.data);
           // Directly set totals from API response
-          setTotalStats({
+          const stats = {
             totalOrders: response.data.totalOrders || 0,
             totalSales: response.data.totalSales || 0,
             totalCost: response.data.totalCost || 0,
             totalCustomers: 0 // Not provided by /dashboard endpoint
-          });
+          };
+          setTotalStats(stats);
+          dashboardPageCache.totalStats = stats;
         }
         setLoading(false);
       })
@@ -138,6 +168,7 @@ function Dashboard() {
       .then((response) => {
         if (response.data.Items) {
           setUsers(response.data.Count);
+          dashboardPageCache.users = response.data.Count;
           console.log(response.data.Count);
         }
         setLoading(false);
@@ -149,6 +180,10 @@ function Dashboard() {
 
   // Analytics functions
   useEffect(() => {
+    // Already have this from a previous visit — skip refetching
+    if (dashboardPageCache.products) {
+      return;
+    }
     fetchProductsAndCategories();
   }, []);
 
@@ -178,19 +213,26 @@ function Dashboard() {
       const categoriesList = Array.isArray(categoriesData) ? categoriesData : (categoriesData?.Items || []);
       setCategories(categoriesList);
 
-      // Fetch subcategories for each category
-      const allSubcategories = [];
-      for (const category of categoriesList) {
-        try {
-          const subCatResponse = await fetch(`${API_URL}/categories/${category.id}/subcategories`);
-          const subCatData = await subCatResponse.json();
-          const subCatList = Array.isArray(subCatData) ? subCatData : (subCatData?.Items || []);
-          allSubcategories.push(...subCatList);
-        } catch (err) {
-          console.error(`Failed to load subcategories for category ${category.id}`, err);
-        }
-      }
+      // Fetch subcategories for all categories at once (in parallel), instead
+      // of one at a time — much faster, especially on slow connections.
+      const subCatResults = await Promise.all(
+        categoriesList.map((category) =>
+          fetch(`${API_URL}/categories/${category.id}/subcategories`)
+            .then((res) => res.json())
+            .then((data) => (Array.isArray(data) ? data : data?.Items || []))
+            .catch((err) => {
+              console.error(`Failed to load subcategories for category ${category.id}`, err);
+              return [];
+            })
+        )
+      );
+      const allSubcategories = subCatResults.flat();
       setSubcategories(allSubcategories);
+
+      // Cache so returning to Dashboard later skips this fetch
+      dashboardPageCache.products = productsList;
+      dashboardPageCache.categories = categoriesList;
+      dashboardPageCache.subcategories = allSubcategories;
     } catch (error) {
       console.error("Error fetching products and categories:", error);
     }
@@ -224,6 +266,23 @@ function Dashboard() {
       category: categoryName,
       subcategory: subcategoryName
     };
+  };
+
+  // Aggregate real orders (completed purchases) by category, e.g. Eritrea vs Uganda vs...
+  const getOrdersByCategory = () => {
+    const purchasedProducts = purchaseData?.mostPurchased || [];
+    const counts = {};
+
+    purchasedProducts.forEach((product) => {
+      const details = getProductDetails(product.productId);
+      const categoryName = details?.category || "Uncategorized";
+      counts[categoryName] = (counts[categoryName] || 0) + (product.count || 0);
+    });
+
+    return Object.entries(counts)
+      .map(([name, orders]) => ({ name, orders }))
+      .sort((a, b) => b.orders - a.orders)
+      .slice(0, 5);
   };
 
   // Helper function to filter products based on search query
@@ -265,9 +324,22 @@ function Dashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      setAnalyticsLoading(true);
-
       const timeParam = timeFilter !== "all" ? `?timeFilter=${timeFilter}` : `?timeFilter=all`;
+
+      // Serve from cache instantly if we've already fetched this exact time filter
+      if (dashboardPageCache.analyticsByFilter[timeFilter]) {
+        const cached = dashboardPageCache.analyticsByFilter[timeFilter];
+        setDashboardData(cached.dashboard);
+        setRevenueData(cached.revenue);
+        setPurchaseData(cached.purchases);
+        setUserData(cached.users);
+        setMobileSessionsData(cached.mobileSessions);
+        setWebSessionsData(cached.webSessions);
+        setAnalyticsLoading(false);
+        return;
+      }
+
+      setAnalyticsLoading(true);
 
       console.log(`Fetching analytics with time filter: ${timeFilter}`);
 
@@ -287,6 +359,16 @@ function Dashboard() {
         dateRange: dashboard.dateRange,
         timeFilter: dashboard.timeFilter
       });
+
+      // Cache this time filter's results for next time
+      dashboardPageCache.analyticsByFilter[timeFilter] = {
+        dashboard,
+        revenue,
+        purchases,
+        users,
+        mobileSessions,
+        webSessions,
+      };
 
       setDashboardData(dashboard);
       setRevenueData(revenue);
@@ -600,6 +682,23 @@ function Dashboard() {
     setProductViewsBreakdown(null);
   };
 
+  const timeFilterBtnStyle = (active) => ({
+    borderRadius: '20px',
+    textTransform: 'none',
+    fontWeight: 600,
+    ...(active
+      ? {
+          background: 'linear-gradient(90deg, #a78bfa, #60a5fa)',
+          color: '#0a0612',
+          border: '1px solid transparent',
+        }
+      : {
+          background: 'rgba(255,255,255,0.06)',
+          color: 'rgba(255,255,255,0.65)',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }),
+  });
+
   return (
     <>
       <Helmet>
@@ -675,10 +774,17 @@ function Dashboard() {
           }
         }
       `}</style>
-      <div className="content dashboard-dark-theme">
+      <div
+        className="content dashboard-dark-theme"
+        style={{
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
+        }}
+      >
         <Row>
           <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--warning" style={{ marginBottom: '15px' }}>
+            <Card className="card-stats dashboard-stat-card dashboard-stat-card--warning" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
               <CardBody>
                 <Row>
                   <Col xs="5">
@@ -688,13 +794,13 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px' }}>TOTAL ORDERS</p>
+                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL ORDERS</p>
                       {loading ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
                           <Spinner color="warning" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0 }}>{totalStats.totalOrders}</CardTitle>
+                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>{totalStats.totalOrders}</CardTitle>
                       )}
                     </div>
                   </Col>
@@ -704,7 +810,7 @@ function Dashboard() {
           </Col>
 
           <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--success" style={{ marginBottom: '15px' }}>
+            <Card className="card-stats dashboard-stat-card dashboard-stat-card--success" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
               <CardBody>
                 <Row>
                   <Col xs="5">
@@ -714,13 +820,13 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px' }}>TOTAL SALES</p>
+                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL SALES</p>
                       {loading ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
                           <Spinner color="success" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0 }}>
+                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
                           ${Number(totalStats.totalSales).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
@@ -735,7 +841,7 @@ function Dashboard() {
           </Col>
 
           <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--danger" style={{ marginBottom: '15px' }}>
+            <Card className="card-stats dashboard-stat-card dashboard-stat-card--danger" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
               <CardBody>
                 <Row>
                   <Col xs="5">
@@ -745,13 +851,13 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px' }}>TOTAL COST</p>
+                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL COST</p>
                       {loading ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
                           <Spinner color="danger" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0 }}>
+                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
                           ${Number(totalStats.totalCost).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
@@ -766,7 +872,7 @@ function Dashboard() {
           </Col>
 
           <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--primary" style={{ marginBottom: '15px' }}>
+            <Card className="card-stats dashboard-stat-card dashboard-stat-card--primary" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
               <CardBody>
                 <Row>
                   <Col xs="5">
@@ -776,13 +882,13 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px' }}>TOTAL USERS</p>
+                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL USERS</p>
                       {loading ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
                           <Spinner color="primary" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0 }}>
+                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
                           {Users}
                         </CardTitle>
                       )}
@@ -813,6 +919,7 @@ function Dashboard() {
                   color="primary"
                   onClick={() => setTimeFilter("all")}
                   size="small"
+                  style={timeFilterBtnStyle(timeFilter === "all")}
                 >
                   All Time
                 </MUIButton>
@@ -822,6 +929,7 @@ function Dashboard() {
                   onClick={() => setTimeFilter("daily")}
                   size="small"
                   disabled={analyticsLoading}
+                  style={timeFilterBtnStyle(timeFilter === "daily")}
                 >
                   Today
                 </MUIButton>
@@ -831,6 +939,7 @@ function Dashboard() {
                   onClick={() => setTimeFilter("weekly")}
                   size="small"
                   disabled={analyticsLoading}
+                  style={timeFilterBtnStyle(timeFilter === "weekly")}
                 >
                   Last 7 Days
                 </MUIButton>
@@ -840,6 +949,7 @@ function Dashboard() {
                   onClick={() => setTimeFilter("monthly")}
                   size="small"
                   disabled={analyticsLoading}
+                  style={timeFilterBtnStyle(timeFilter === "monthly")}
                 >
                   This Month
                 </MUIButton>
@@ -849,20 +959,142 @@ function Dashboard() {
                   onClick={() => setTimeFilter("yearly")}
                   size="small"
                   disabled={analyticsLoading}
+                  style={timeFilterBtnStyle(timeFilter === "yearly")}
                 >
                   This Year
                 </MUIButton>
               </Box>
 
-              {/* Analytics Key Metrics Row 2 - Tracking Events */}
+              {/* Sales Trend + Category Breakdown Charts */}
+              <Grid container spacing={2} style={{ marginBottom: 20 }}>
+                <Grid item xs={6} md={8}>
+                  <MUICard
+                    style={{
+                      height: '100%',
+                      background: 'rgba(255,255,255,0.04)',
+                      backdropFilter: 'blur(24px)',
+                      border: '1px solid rgba(255,255,255,0.09)',
+                      borderRadius: '16px',
+                      boxShadow: 'none',
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="subtitle1" style={{ color: '#fff', marginBottom: 12, fontWeight: 600 }}>
+                        Sales Trend
+                      </Typography>
+                      {analyticsLoading ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                          <CircularProgress style={{ color: '#a78bfa' }} />
+                        </Box>
+                      ) : revenueData?.revenueByDate?.length > 0 ? (
+                        <Line
+                          data={{
+                            labels: revenueData.revenueByDate.map(d => d.date),
+                            datasets: [{
+                              label: 'Revenue ($)',
+                              data: revenueData.revenueByDate.map(d => parseFloat(d.revenue)),
+                              borderColor: '#a78bfa',
+                              backgroundColor: 'rgba(167,139,250,0.15)',
+                              tension: 0.3,
+                              fill: true,
+                              pointBackgroundColor: '#60a5fa',
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            plugins: {
+                              legend: { labels: { color: 'rgba(255,255,255,0.7)' } },
+                            },
+                            scales: {
+                              x: {
+                                ticks: { color: 'rgba(255,255,255,0.45)' },
+                                grid: { color: 'rgba(255,255,255,0.06)' },
+                              },
+                              y: {
+                                beginAtZero: true,
+                                ticks: {
+                                  color: 'rgba(255,255,255,0.45)',
+                                  callback: (v) => '$' + Number(v).toLocaleString(),
+                                },
+                                grid: { color: 'rgba(255,255,255,0.06)' },
+                              },
+                            },
+                          }}
+                        />
+                      ) : (
+                        <Box p={4} textAlign="center">
+                          <Typography style={{ color: 'rgba(255,255,255,0.4)' }}>
+                            No sales data for this period
+                          </Typography>
+                        </Box>
+                      )}
+                    </CardContent>
+                  </MUICard>
+                </Grid>
+
+                <Grid item xs={6} md={4}>
+                  <MUICard
+                    style={{
+                      height: '100%',
+                      background: 'rgba(255,255,255,0.04)',
+                      backdropFilter: 'blur(24px)',
+                      border: '1px solid rgba(255,255,255,0.09)',
+                      borderRadius: '16px',
+                      boxShadow: 'none',
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="subtitle1" style={{ color: '#fff', marginBottom: 12, fontWeight: 600 }}>
+                        Orders by Category
+                      </Typography>
+                      {analyticsLoading ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                          <CircularProgress style={{ color: '#a78bfa' }} />
+                        </Box>
+                      ) : getOrdersByCategory().length > 0 ? (
+                        <Doughnut
+                          data={{
+                            labels: getOrdersByCategory().map(c => c.name),
+                            datasets: [{
+                              data: getOrdersByCategory().map(c => c.orders),
+                              backgroundColor: ['#a78bfa', '#60a5fa', '#f9a8d4', '#6ee7b7', '#fbbf24'],
+                              borderWidth: 0,
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            plugins: {
+                              legend: {
+                                position: 'bottom',
+                                labels: { color: 'rgba(255,255,255,0.7)', boxWidth: 12, padding: 12 },
+                              },
+                              tooltip: {
+                                callbacks: {
+                                  label: (context) => `${context.label}: ${context.parsed} orders`,
+                                },
+                              },
+                            },
+                          }}
+                        />
+                      ) : (
+                        <Box p={4} textAlign="center">
+                          <Typography style={{ color: 'rgba(255,255,255,0.4)' }}>
+                            No order data yet
+                          </Typography>
+                        </Box>
+                      )}
+                    </CardContent>
+                  </MUICard>
+                </Grid>
+              </Grid>
               <Grid container spacing={2} style={{ marginBottom: 20 }}>
                 <Grid item xs={6} sm={6} md={3}>
-                  <MUICard className="dashboard-summary-card dashboard-summary-card--cyan" style={{ height: '100%' }}>
+                  <MUICard className="dashboard-summary-card dashboard-summary-card--cyan" style={{ height: '100%', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '16px', boxShadow: 'none' }}>
                     <CardContent style={{ padding: '12px' }}>
-                      <Typography color="textSecondary" gutterBottom style={{ fontSize: '0.75rem' }}>
+                      <Typography gutterBottom style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
                         Total Events Tracked
                       </Typography>
-                      <Typography variant="h4" style={{ fontSize: '1.5rem' }}>
+                      <Typography variant="h4" style={{ fontSize: '1.5rem', color: '#ffffff' }}>
                         {dashboardData?.totalEvents || 0}
                       </Typography>
                     </CardContent>
@@ -873,15 +1105,15 @@ function Dashboard() {
                 <Grid item xs={6} sm={6} md={3}>
                   <MUICard
                     className="dashboard-summary-card dashboard-summary-card--orange"
-                    style={{ height: '100%', cursor: 'pointer' }}
+                    style={{ height: '100%', cursor: 'pointer', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '16px', boxShadow: 'none' }}
                     // onClick={handleWebVisitsClick}
                     hover
                   >
                     <CardContent style={{ padding: '12px' }}>
-                      <Typography color="textSecondary" gutterBottom style={{ fontSize: '0.75rem' }}>
+                      <Typography gutterBottom style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
                         Web Visits (Sessions)
                       </Typography>
-                      <Typography variant="h4" style={{ fontSize: '1.5rem' }}>
+                      <Typography variant="h4" style={{ fontSize: '1.5rem', color: '#ffffff' }}>
                         {dashboardData?.deviceBreakdown?.web || 0}
                       </Typography>
                       {/* <Typography variant="caption" color="primary" style={{ fontSize: '0.65rem', marginTop: '4px', display: 'block' }}>
@@ -895,15 +1127,15 @@ function Dashboard() {
                 <Grid item xs={6} sm={6} md={3}>
                   <MUICard
                     className="dashboard-summary-card dashboard-summary-card--green"
-                    style={{ height: '100%', cursor: 'pointer' }}
+                    style={{ height: '100%', cursor: 'pointer', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '16px', boxShadow: 'none' }}
                     // onClick={handleMobileVisitsClick}
                     hover
                   >
                     <CardContent style={{ padding: '12px' }}>
-                      <Typography color="textSecondary" gutterBottom style={{ fontSize: '0.75rem' }}>
+                      <Typography gutterBottom style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
                         Mobile Visits (Sessions)
                       </Typography>
-                      <Typography variant="h4" style={{ fontSize: '1.5rem' }}>
+                      <Typography variant="h4" style={{ fontSize: '1.5rem', color: '#ffffff' }}>
                         {dashboardData?.deviceBreakdown?.mobile || 0}
                       </Typography>
                       {/* <Typography variant="caption" color="primary" style={{ fontSize: '0.65rem', marginTop: '4px', display: 'block' }}>
@@ -915,12 +1147,12 @@ function Dashboard() {
 
                 {/* PRODUCT VIEWS CARD */}
                 <Grid item xs={6} sm={6} md={3}>
-                  <MUICard className="dashboard-summary-card dashboard-summary-card--pink" style={{ height: '100%' }}>
+                  <MUICard className="dashboard-summary-card dashboard-summary-card--pink" style={{ height: '100%', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '16px', boxShadow: 'none' }}>
                     <CardContent style={{ padding: '12px' }}>
-                      <Typography color="textSecondary" gutterBottom style={{ fontSize: '0.75rem' }}>
+                      <Typography gutterBottom style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
                         Product Views
                       </Typography>
-                      <Typography variant="h4" style={{ fontSize: '1.5rem' }}>
+                      <Typography variant="h4" style={{ fontSize: '1.5rem', color: '#ffffff' }}>
                         {dashboardData?.mostViewedProducts?.reduce((sum, p) => sum + p.views, 0) || 0}
                       </Typography>
                     </CardContent>
@@ -929,7 +1161,18 @@ function Dashboard() {
               </Grid>
 
               {/* Tabs for Different Analytics Views */}
-              <Paper className="dashboard-tabs-shell" style={{ marginBottom: 15, overflowX: 'auto' }}>
+              <Paper
+                className="dashboard-tabs-shell"
+                style={{
+                  marginBottom: 15,
+                  overflowX: 'auto',
+                  background: 'rgba(255,255,255,0.04)',
+                  backdropFilter: 'blur(24px)',
+                  border: '1px solid rgba(255,255,255,0.09)',
+                  borderRadius: '16px',
+                  boxShadow: 'none',
+                }}
+              >
                 <Tabs
                   value={activeTab}
                   onChange={handleTabChange}
@@ -937,13 +1180,20 @@ function Dashboard() {
                   textColor="primary"
                   variant="scrollable"
                   scrollButtons="auto"
+                  style={{ minHeight: 48 }}
+                  TabIndicatorProps={{
+                    style: {
+                      background: 'linear-gradient(90deg, #a78bfa, #60a5fa)',
+                      height: 3,
+                    },
+                  }}
                 >
-                  <Tab label="Product Views" />
-                  <Tab label="Purchases" />
-                  <Tab label="Cart Additions" />
-                  <Tab label="Page Views" />
-                  <Tab label="Categories" />
-                  <Tab label="Revenue" />
+                  <Tab label="Product Views" style={{ color: 'rgba(255,255,255,0.65)' }} />
+                  <Tab label="Purchases" style={{ color: 'rgba(255,255,255,0.65)' }} />
+                  <Tab label="Cart Additions" style={{ color: 'rgba(255,255,255,0.65)' }} />
+                  <Tab label="Page Views" style={{ color: 'rgba(255,255,255,0.65)' }} />
+                  <Tab label="Categories" style={{ color: 'rgba(255,255,255,0.65)' }} />
+                  <Tab label="Revenue" style={{ color: 'rgba(255,255,255,0.65)' }} />
                 </Tabs>
               </Paper>
 

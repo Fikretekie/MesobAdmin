@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import {
   Route,
   Routes,
@@ -120,7 +120,14 @@ function Admin(props) {
   };
 
   return (
-    <div className="wrapper app-dark-theme">
+    <div
+      className="wrapper app-dark-theme"
+      style={{
+        background:
+          "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+        minHeight: "100vh",
+      }}
+    >
       <Sidebar
         {...props}
         routes={accessibleRoutes}
@@ -129,18 +136,40 @@ function Admin(props) {
       <div
         className="main-panel"
         ref={mainPanel}
-        style={{ height: "100vh", overflow: "auto" }}
+        style={{
+          height: "100vh",
+          overflow: "auto",
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+        }}
       >
         <DemoNavbar {...props} />
-        <Routes>
-          {accessibleRoutes.map((prop, key) => (
-            <Route path={prop.path} element={prop.component} key={key} exact />
-          ))}
-          <Route
-            path={basePath === "/seller" ? "/seller" : "/admin"}
-            element={<Navigate to={`${basePath}${defaultRoute}`} replace />}
-          />
-        </Routes>
+        <Suspense
+          fallback={
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: "60vh",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: "14px",
+              }}
+            >
+              Loading page...
+            </div>
+          }
+        >
+          <Routes>
+            {accessibleRoutes.map((prop, key) => (
+              <Route path={prop.path} element={prop.component} key={key} exact />
+            ))}
+            <Route
+              path={basePath === "/seller" ? "/seller" : "/admin"}
+              element={<Navigate to={`${basePath}${defaultRoute}`} replace />}
+            />
+          </Routes>
+        </Suspense>
         <Footer fluid />
         {showGoToTop && (
           <button

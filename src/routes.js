@@ -1,18 +1,20 @@
-import Dashboard from "views/Dashboard.js";
-import Notifications from "views/Notifications.js";
-import UserPage from "views/UserPage.js";
-import Users from "views/Users.js";
-import PromoCodes from "views/PromoCodes.js";
-import Products from "components/Products/ProductsPage";
-import Categories from "views/Categories.js";
-import SellerProductManagement from "views/SellerProductManagement.js";
-import SellerSubcategoryManagement from "views/SellerSubcategoryManagement.js";
-import SellerOrders from "views/SellerOrders.js";
-import Orders from "views/Orders.js";
-import Cart from "views/Cart";
-import OrderDetails from "views/OrderDetails";
-import EditOrder from "views/EditOrder";
-import MesobFinancial from "views/MesobFinancial";
+import React from "react";
+
+const Dashboard = React.lazy(() => import("views/Dashboard.js"));
+const Notifications = React.lazy(() => import("views/Notifications.js"));
+const UserPage = React.lazy(() => import("views/UserPage.js"));
+const Users = React.lazy(() => import("views/Users.js"));
+const PromoCodes = React.lazy(() => import("views/PromoCodes.js"));
+const Products = React.lazy(() => import("components/Products/ProductsPage"));
+const Categories = React.lazy(() => import("views/Categories.js"));
+const SellerProductManagement = React.lazy(() => import("views/SellerProductManagement.js"));
+const SellerSubcategoryManagement = React.lazy(() => import("views/SellerSubcategoryManagement.js"));
+const SellerOrders = React.lazy(() => import("views/SellerOrders.js"));
+const Orders = React.lazy(() => import("views/Orders.js"));
+const Cart = React.lazy(() => import("views/Cart"));
+const OrderDetails = React.lazy(() => import("views/OrderDetails"));
+const EditOrder = React.lazy(() => import("views/EditOrder"));
+const MesobFinancial = React.lazy(() => import("views/MesobFinancial"));
 
 // import EditOrder from "views/EditOrder";
 

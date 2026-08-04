@@ -53,12 +53,21 @@ function Sidebar(props) {
     };
   });
   return (
-    <div className="sidebar" data-color={props.backgroundColor}>
-      <div className="logo">
-        <a
-          href="#"
-          className="simple-text logo-mini"
-        >
+    <div
+      className="sidebar"
+      data-color={props.backgroundColor}
+      style={{
+        background: "transparent",
+        padding: "20px 14px",
+      }}
+    >
+      <style>{`
+        .sidebar .logo:after {
+          display: none !important;
+        }
+      `}</style>
+      <div className="logo" style={{ padding: "0 6px 20px", border: "none" }}>
+        <a href="#" className="simple-text logo-mini">
           <div className="logo-img">
             <img src={logo} alt="react-logo" />
           </div>
@@ -66,6 +75,7 @@ function Sidebar(props) {
         <a
           href="#"
           className="simple-text logo-normal"
+          style={{ color: "#fff", fontWeight: 700 }}
         >
           Mesob Store
         </a>
@@ -80,17 +90,40 @@ function Sidebar(props) {
             ) {
               return null;
             }
+            const isActive = activeRoute(prop.layout + prop.path) === "active";
             return (
               <li
-                className={
-                  activeRoute(prop.layout + prop.path) +
-                  (prop.pro ? " active active-pro" : "")
-                }
                 key={key}
+                style={{
+                  listStyle: "none",
+                  borderRadius: "12px",
+                  marginBottom: "4px",
+                  background: isActive
+                    ? "linear-gradient(90deg, #a78bfa, #60a5fa)"
+                    : "transparent",
+                  boxShadow: isActive
+                    ? "0 4px 14px rgba(167,139,250,0.35)"
+                    : "none",
+                }}
               >
-                <NavLink to={prop.layout + prop.path} className="nav-link">
-                  <i className={"now-ui-icons " + prop.icon} />
-                  <p>{prop.name}</p>
+                <NavLink
+                  to={prop.layout + prop.path}
+                  className="nav-link"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "11px 14px",
+                    borderRadius: "12px",
+                    color: isActive ? "#0a0612" : "rgba(255,255,255,0.55)",
+                    fontWeight: isActive ? 700 : 600,
+                  }}
+                >
+                  <i
+                    className={"now-ui-icons " + prop.icon}
+                    style={{ color: "inherit" }}
+                  />
+                  <p style={{ margin: 0, color: "inherit" }}>{prop.name}</p>
                 </NavLink>
               </li>
             );

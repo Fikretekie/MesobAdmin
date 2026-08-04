@@ -36,10 +36,46 @@ const ActionDropdown = ({ row, onEdit, onDelete }) => {
 
   return (
     <Dropdown isOpen={dropdownOpen} toggle={toggle}>
-      <DropdownToggle caret>Actions</DropdownToggle>
-      <DropdownMenu>
-        <DropdownItem onClick={() => onEdit(row)}>Edit</DropdownItem>
-        <DropdownItem onClick={() => onDelete(row.id)}>Delete</DropdownItem>
+      <style>{`
+        .promo-actions-toggle {
+          background: linear-gradient(90deg, #a78bfa, #60a5fa) !important;
+          color: #0a0612 !important;
+          border: none !important;
+          border-radius: 20px !important;
+          font-size: 12px !important;
+          font-weight: 700 !important;
+          padding: 6px 14px !important;
+          box-shadow: none !important;
+        }
+        .promo-actions-toggle:hover,
+        .promo-actions-toggle:focus,
+        .promo-actions-toggle:active {
+          background: linear-gradient(90deg, #a78bfa, #60a5fa) !important;
+          color: #0a0612 !important;
+          box-shadow: none !important;
+        }
+      `}</style>
+      <DropdownToggle caret className="promo-actions-toggle">
+        Actions
+      </DropdownToggle>
+      <DropdownMenu
+        style={{
+          background: "#150f24",
+          border: "1px solid rgba(255,255,255,0.1)",
+        }}
+      >
+        <DropdownItem
+          onClick={() => onEdit(row)}
+          style={{ color: "rgba(255,255,255,0.85)", background: "transparent" }}
+        >
+          Edit
+        </DropdownItem>
+        <DropdownItem
+          onClick={() => onDelete(row.id)}
+          style={{ color: "#f9a8d4", background: "transparent" }}
+        >
+          Delete
+        </DropdownItem>
       </DropdownMenu>
     </Dropdown>
   );
@@ -81,24 +117,6 @@ const columns = (onEdit, onDelete) => [
     selector: (row) => row.Order_Limit,
     sortable: true,
     width: "150px",
-  },
-  {
-    name: "Display",
-    selector: (row) => (row.Display == 1 ? "Yes" : "No"),
-    sortable: true,
-    width: "100px",
-  },
-  {
-    name: "Auto",
-    selector: (row) => (row.Auto == 1 ? "Yes" : "No"),
-    sortable: true,
-    width: "100px",
-  },
-  {
-    name: "Manual",
-    selector: (row) => (row.Manual == 1 ? "Yes" : "No"),
-    sortable: true,
-    width: "100px",
   },
   {
     name: "Action",
@@ -437,40 +455,74 @@ function PromoCodes() {
         }
       />
       <NotificationAlert ref={notificationAlertRef} />
-      <div className="content">
+      <div
+        className="content"
+        style={{
+          background:
+            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
+        }}
+      >
         <Row>
           <Col xs={12}>
-            <Card>
-              <CardHeader>
+            <Card
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: "16px",
+                boxShadow: "none",
+              }}
+            >
+              <CardHeader style={{ borderBottom: "none" }}>
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 10,
                   }}
                 >
-                  <CardTitle tag="h4">Promo Codes</CardTitle>
+                  <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
+                    Promo Codes
+                  </CardTitle>
                   <Input
                     type="text"
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ marginLeft: "10px", width: "250px" }}
+                    style={{
+                      marginLeft: "10px",
+                      width: "250px",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#fff",
+                      borderRadius: "10px",
+                    }}
                   />
-                  <Button
-                    color="info"
-                    className="btn-round"
+                  <button
                     onClick={() => toggleModal()}
+                    style={{
+                      background: "linear-gradient(90deg, #34d399, #10b981)",
+                      color: "#06281c",
+                      border: "none",
+                      borderRadius: "20px",
+                      padding: "9px 16px",
+                      fontSize: "12.5px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
                   >
-                    Add Promo Code
-                  </Button>
+                    + Add Promo Code
+                  </button>
                 </div>
               </CardHeader>
               <CardBody>
                 {loading ? (
                   <div className="text-center">
                     <Spinner color="primary" />
-                    <p>Loading promo codes...</p>
+                    <p style={{ color: "rgba(255,255,255,0.6)" }}>Loading promo codes...</p>
                   </div>
                 ) : (
                   <DataTable
@@ -486,6 +538,59 @@ function PromoCodes() {
                     paginationPerPage={100}
                     paginationRowsPerPageOptions={[100, 200, 300, 500, 1000]}
                     highlightOnHover
+                    customStyles={{
+                      table: {
+                        style: { background: "transparent" },
+                      },
+                      headRow: {
+                        style: {
+                          background: "rgba(255,255,255,0.02)",
+                          borderBottom: "1px solid rgba(255,255,255,0.08)",
+                          minHeight: "44px",
+                        },
+                      },
+                      headCells: {
+                        style: {
+                          color: "rgba(255,255,255,0.45)",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.4px",
+                          fontWeight: 600,
+                        },
+                      },
+                      rows: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.85)",
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          minHeight: "52px",
+                          "&:hover": {
+                            background: "rgba(255,255,255,0.04)",
+                          },
+                        },
+                      },
+                      pagination: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.6)",
+                          borderTop: "1px solid rgba(255,255,255,0.08)",
+                        },
+                        pageButtonsStyle: {
+                          color: "rgba(255,255,255,0.6)",
+                          fill: "rgba(255,255,255,0.6)",
+                          "&:disabled": { fill: "rgba(255,255,255,0.2)" },
+                          "&:hover:not(:disabled)": {
+                            background: "rgba(255,255,255,0.08)",
+                          },
+                        },
+                      },
+                      noData: {
+                        style: {
+                          background: "transparent",
+                          color: "rgba(255,255,255,0.4)",
+                        },
+                      },
+                    }}
                   />
                 )}
               </CardBody>
