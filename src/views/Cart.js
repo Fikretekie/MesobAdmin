@@ -527,7 +527,7 @@ function Cart() {
                     onChange={(e) => setBodyCartItem(e.target.value)}
                   /> */}
                   <Editor
-                    apiKey={process.env.REACT_APP_TINYMCE_API_KEY}
+                    tinymceScriptSrc={`${process.env.PUBLIC_URL}/tinymce/tinymce.min.js`}
                     onInit={(evt, editor) => (editorRef.current = editor)}
                     initialValue=""
                     init={{
@@ -536,6 +536,8 @@ function Cart() {
                       skin: "oxide-dark",
                       content_css: "dark",
                       branding: false,
+                      promotion: false,
+                      license_key: "gpl",
                       plugins: [
                         "advlist autolink lists link image charmap print preview anchor",
                         "searchreplace visualblocks code fullscreen",
@@ -627,7 +629,7 @@ function Cart() {
                 onChange={(e) => setBodyMultiUsers(e.target.value)}
               /> */}
               <Editor
-                apiKey={process.env.REACT_APP_TINYMCE_API_KEY}
+                tinymceScriptSrc={`${process.env.PUBLIC_URL}/tinymce/tinymce.min.js`}
                 onInit={(evt, editor) => (editorRef.current = editor)}
                 initialValue=""
                 init={{
@@ -636,6 +638,8 @@ function Cart() {
                   skin: "oxide-dark",
                   content_css: "dark",
                   branding: false,
+                  promotion: false,
+                  license_key: "gpl",
                   plugins: [
                     "advlist autolink lists link image charmap print preview anchor",
                     "searchreplace visualblocks code fullscreen",
