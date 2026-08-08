@@ -197,6 +197,7 @@ const handleNotificationSend = async (e) => {
                             content_css: "dark",
                             branding: false,
                             promotion: false,
+                            license_key: "gpl",
                             plugins: [
                               "advlist autolink lists link image charmap print preview anchor",
                               "searchreplace visualblocks code fullscreen",
