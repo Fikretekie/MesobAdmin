@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import useEmailTemplates from "hooks/useEmailTemplates";
 import DataTable from "react-data-table-component";
 import {
   Card,
@@ -93,6 +94,22 @@ function Users() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRows, setSelectedRows] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const { templates, saveTemplate } = useEmailTemplates();
+
+  const handleSaveAsTemplate = async (subjectText, messageText) => {
+    if (!subjectText.trim() || !messageText.trim()) {
+      alert("Fill in a subject and message before saving as a template.");
+      return;
+    }
+    const name = window.prompt("Name this template:");
+    if (!name) return;
+    try {
+      await saveTemplate(name, subjectText, messageText);
+      alert("Template saved!");
+    } catch (err) {
+      alert("Failed to save template.");
+    }
+  };
 
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -153,49 +170,54 @@ function Users() {
   const handleEmailSend = async (e) => {
     e.preventDefault();
 
-    const emails = selectedRows.map((user) => user.email).join(", ");
     const subjectMultipleUsers = subject;
     const messageMultipleUsers = body;
 
-    console.log("Sending email to:", emails, "\n");
-    console.log("subject: ", subjectMultipleUsers, "\n");
-    console.log("message : ", messageMultipleUsers, "\n");
-
-    const payload = {
-      email: emails,
-      message: messageMultipleUsers,
-      subject: subjectMultipleUsers,
-    };
-
     try {
       setSendMultipleBtnLoading(true);
-      const response = await axios.post(
-        "https://q0v1vrhy5g.execute-api.us-east-1.amazonaws.com/staging",
-        payload,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("Email API Response:", response.data);
 
-      if (response.data.statusCode) {
-        // Close modal after sending email
+      // Send one separate, private email per recipient instead of one
+      // combined email — so no one sees anyone else's address.
+      const results = await Promise.allSettled(
+        selectedRows.map((user) =>
+          axios.post(
+            "https://q0v1vrhy5g.execute-api.us-east-1.amazonaws.com/staging",
+            {
+              email: user.email,
+              message: messageMultipleUsers,
+              subject: subjectMultipleUsers,
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          )
+        )
+      );
+
+      const failed = results.filter((r) => r.status === "rejected");
+
+      setSendMultipleBtnLoading(false);
+
+      if (failed.length === 0) {
         setModalOpen(false);
         setSubject("");
         setBody("");
-        setSendMultipleBtnLoading(false);
-
-        notify("tr", "Emails sent successfully!", "success");
+        notify("tr", `Sent ${selectedRows.length} individual emails successfully!`, "success");
+      } else if (failed.length < selectedRows.length) {
+        notify(
+          "tr",
+          `Sent ${selectedRows.length - failed.length} of ${selectedRows.length} emails. ${failed.length} failed.`,
+          "warning"
+        );
       } else {
-        setSendMultipleBtnLoading(false);
-
-        notify("tr", response.data.message, "danger");
+        notify("tr", "Failed to send emails.", "danger");
       }
     } catch (error) {
-      console.error("Error sending email:", error);
-      throw new Error(error.response?.data?.message || "Error sending email");
+      setSendMultipleBtnLoading(false);
+      console.error("Error sending emails:", error);
+      notify("tr", "Error sending emails", "danger");
     }
   };
 
@@ -401,6 +423,28 @@ function Users() {
           <h6 className="mb-3">Send Email</h6>
           <Form>
             <FormGroup>
+              <Label for="userTemplateSelect">Use saved template</Label>
+              <Input
+                type="select"
+                id="userTemplateSelect"
+                defaultValue=""
+                onChange={(e) => {
+                  const t = templates.find((tpl) => tpl.id === e.target.value);
+                  if (t) {
+                    setSubject(t.subject);
+                    if (editorRef.current) {
+                      editorRef.current.setContent(t.message);
+                    }
+                  }
+                }}
+              >
+                <option value="">-- Select a template --</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </Input>
+            </FormGroup>
+            <FormGroup>
               <Label for="subject">Subject</Label>
               <Input
                 type="text"
@@ -477,6 +521,14 @@ function Users() {
               ) : (
                 "Send Email"
               )}
+            </Button>
+            <Button
+              color="secondary"
+              className="btn-round ml-2"
+              type="button"
+              onClick={() => handleSaveAsTemplate(subject, body)}
+            >
+              Save as Template
             </Button>
           </Form>
         </ModalBody>
