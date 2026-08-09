@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import useEmailTemplates from "hooks/useEmailTemplates";
+import TemplateCardGrid from "components/TemplateCardGrid";
 import DataTable from "react-data-table-component";
 import {
   Card,
@@ -38,6 +39,8 @@ function Cart() {
   const [loading, setLoading] = useState(!cartPageCache.items);
   const [searchTerm, setSearchTerm] = useState("");
   const { templates, saveTemplate } = useEmailTemplates();
+  const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState(null);
+  const [selectedMultiTemplateId, setSelectedMultiTemplateId] = useState(null);
 
   const handleSaveAsTemplate = async (subject, message) => {
     if (!subject.trim() || !message.trim()) {
@@ -533,26 +536,33 @@ function Cart() {
               <h6 className="mb-3">Send Email</h6>
               <Form>
                 <FormGroup>
-                  <Label for="cartTemplateSelect">Use saved template</Label>
-                  <Input
-                    type="select"
-                    id="cartTemplateSelect"
-                    defaultValue=""
-                    onChange={(e) => {
-                      const t = templates.find((tpl) => tpl.id === e.target.value);
-                      if (t) {
-                        setSubjectCartItem(t.subject);
-                        if (editorRef.current) {
-                          editorRef.current.setContent(t.message);
-                        }
+                  <Label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    Saved Templates
+                    <span
+                      style={{
+                        background: "linear-gradient(90deg, #f9a8d4, #a78bfa)",
+                        color: "#2a0a1f",
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Quick Pick
+                    </span>
+                  </Label>
+                  <TemplateCardGrid
+                    templates={templates}
+                    selectedId={selectedSingleTemplateId}
+                    onSelect={(t) => {
+                      setSelectedSingleTemplateId(t.id);
+                      setSubjectCartItem(t.subject);
+                      if (editorRef.current) {
+                        editorRef.current.setContent(t.message);
                       }
                     }}
-                  >
-                    <option value="">-- Select a template --</option>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </Input>
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label for="subject">Subject</Label>
@@ -590,13 +600,17 @@ function Cart() {
                         "placeholder",
                       ],
                       toolbar:
-                        "undo redo | formatselect | " +
-                        "bold italic backcolor | alignleft aligncenter " +
-                        "alignright alignjustify | bullist numlist outdent indent | " +
-                        "removeformat | help",
+                        "undo redo | blocks fontfamily fontsize | " +
+                        "bold italic underline forecolor backcolor | " +
+                        "alignleft aligncenter alignright alignjustify | " +
+                        "bullist numlist outdent indent | " +
+                        "link image media table | removeformat | help",
+                      image_advtab: true,
+                      image_caption: true,
+                      object_resizing: true,
                       placeholder: "Write your message here...",
                       content_style:
-                        "body { background: #0f172a; color: #e8f1ff; font-family: Helvetica, Arial, sans-serif; }",
+                        "body { background: #0f172a; color: #e8f1ff; font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.6; }",
                     }}
                     onEditorChange={handleCartEditorChange}
                   />
@@ -665,25 +679,33 @@ function Cart() {
           <h6 className="mb-3">Send Email</h6>
           <Form>
             <FormGroup>
-              <Label size="small">Use saved template</Label>
-              <Input
-                type="select"
-                defaultValue=""
-                onChange={(e) => {
-                  const t = templates.find((tpl) => tpl.id === e.target.value);
-                  if (t) {
-                    setSubjectMultiUsers(t.subject);
-                    if (editorRef.current) {
-                      editorRef.current.setContent(t.message);
-                    }
+              <Label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                Saved Templates
+                <span
+                  style={{
+                    background: "linear-gradient(90deg, #f9a8d4, #a78bfa)",
+                    color: "#2a0a1f",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Quick Pick
+                </span>
+              </Label>
+              <TemplateCardGrid
+                templates={templates}
+                selectedId={selectedMultiTemplateId}
+                onSelect={(t) => {
+                  setSelectedMultiTemplateId(t.id);
+                  setSubjectMultiUsers(t.subject);
+                  if (editorRef.current) {
+                    editorRef.current.setContent(t.message);
                   }
                 }}
-              >
-                <option value="">-- Select a template --</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </Input>
+              />
             </FormGroup>
             <FormGroup>
               <Label size="small">Subject</Label>
@@ -721,13 +743,17 @@ function Cart() {
                     "placeholder",
                   ],
                   toolbar:
-                    "undo redo | formatselect | " +
-                    "bold italic backcolor | alignleft aligncenter " +
-                    "alignright alignjustify | bullist numlist outdent indent | " +
-                    "removeformat | help",
+                    "undo redo | blocks fontfamily fontsize | " +
+                    "bold italic underline forecolor backcolor | " +
+                    "alignleft aligncenter alignright alignjustify | " +
+                    "bullist numlist outdent indent | " +
+                    "link image media table | removeformat | help",
+                  image_advtab: true,
+                  image_caption: true,
+                  object_resizing: true,
                   placeholder: "Write your message here...",
                   content_style:
-                    "body { background: #0f172a; color: #e8f1ff; font-family: Helvetica, Arial, sans-serif; }",
+                    "body { background: #0f172a; color: #e8f1ff; font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.6; }",
                 }}
                 onEditorChange={handleMultiUsersEditorChange}
               />
