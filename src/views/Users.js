@@ -478,6 +478,7 @@ function Users() {
                   height: 500,
                   menubar: true,
                   skin: "oxide-dark",
+                  toolbar_mode: "wrap",
                   content_css: "dark",
                   branding: false,
                   promotion: false,
