@@ -260,10 +260,9 @@ const handleNotificationSend = async (e) => {
                             promotion: false,
                             license_key: "gpl",
                             plugins: [
-                              "advlist autolink lists link image charmap print preview anchor",
+                              "advlist autolink lists link image charmap preview anchor",
                               "searchreplace visualblocks code fullscreen",
-                              "insertdatetime media table paste code help wordcount",
-                              "placeholder",
+                              "insertdatetime media table code help wordcount",
                             ],
                             toolbar:
                               "undo redo | blocks fontfamily fontsize | " +
