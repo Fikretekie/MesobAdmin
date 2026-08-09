@@ -1,4 +1,6 @@
 import React, { useState, useRef } from "react";
+import useEmailTemplates from "hooks/useEmailTemplates";
+import TemplateCardGrid from "components/TemplateCardGrid";
 
 // reactstrap components
 import {
@@ -37,6 +39,24 @@ function Notifications() {
   const [description, setDescription] = useState("");
   const [sendNotificationBtnLoading, setSendNotificationBtnLoading] = useState(false);
   const editorRef = useRef(null);
+  const { templates, saveTemplate } = useEmailTemplates();
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+
+  const handleSaveAsTemplate = async () => {
+    const currentBody = editorRef.current ? editorRef.current.getContent() : description;
+    if (!title.trim() || !currentBody.trim()) {
+      alert("Fill in a title and body before saving as a template.");
+      return;
+    }
+    const name = window.prompt("Name this template:");
+    if (!name) return;
+    try {
+      await saveTemplate(name, title, currentBody);
+      alert("Template saved!");
+    } catch (err) {
+      alert("Failed to save template.");
+    }
+  };
 
   const notificationAlertRef = useRef(null);
   const notify = (place, message, type) => {
@@ -162,6 +182,46 @@ const handleNotificationSend = async (e) => {
                   <Row>
                     <Col className="pr-1" md="12">
                       <FormGroup>
+                        <label
+                          style={{
+                            color: "rgba(255,255,255,0.55)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          Saved Templates
+                          <span
+                            style={{
+                              background: "linear-gradient(90deg, #f9a8d4, #a78bfa)",
+                              color: "#2a0a1f",
+                              fontSize: 10,
+                              fontWeight: 800,
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            Quick Pick
+                          </span>
+                        </label>
+                        <TemplateCardGrid
+                          templates={templates}
+                          selectedId={selectedTemplateId}
+                          onSelect={(t) => {
+                            setSelectedTemplateId(t.id);
+                            setTitle(t.subject);
+                            if (editorRef.current) {
+                              editorRef.current.setContent(t.message);
+                            }
+                          }}
+                        />
+                      </FormGroup>
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col className="pr-1" md="12">
+                      <FormGroup>
                         <label style={{ color: "rgba(255,255,255,0.55)" }}>
                           Title
                         </label>
@@ -205,13 +265,17 @@ const handleNotificationSend = async (e) => {
                               "placeholder",
                             ],
                             toolbar:
-                              "undo redo | formatselect | " +
-                              "bold italic forecolor backcolor | alignleft aligncenter " +
-                              "alignright alignjustify | bullist numlist outdent indent | " +
-                              "link image | removeformat",
+                              "undo redo | blocks fontfamily fontsize | " +
+                              "bold italic underline forecolor backcolor | " +
+                              "alignleft aligncenter alignright alignjustify | " +
+                              "bullist numlist outdent indent | " +
+                              "link image media table | removeformat | help",
+                            image_advtab: true,
+                            image_caption: true,
+                            object_resizing: true,
                             placeholder: "Write your message here...",
                             content_style:
-                              "body { background: #0f172a; color: #e8f1ff; font-family: Helvetica, Arial, sans-serif; }",
+                              "body { background: #0f172a; color: #e8f1ff; font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.6; }",
                           }}
                           onEditorChange={handleEditorChange}
                         />
@@ -254,6 +318,14 @@ const handleNotificationSend = async (e) => {
                         ) : (
                           "Send Notification"
                         )}
+                      </Button>
+                      <Button
+                        color="secondary"
+                        className="btn-round ml-2"
+                        type="button"
+                        onClick={handleSaveAsTemplate}
+                      >
+                        Save as Template
                       </Button>
                     </Col>
                   </Row>
