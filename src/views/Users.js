@@ -475,7 +475,7 @@ function Users() {
                 onInit={(evt, editor) => (editorRef.current = editor)}
                 initialValue=""
                 init={{
-                  height: 300,
+                  height: 500,
                   menubar: true,
                   skin: "oxide-dark",
                   content_css: "dark",
