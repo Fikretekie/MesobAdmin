@@ -268,6 +268,21 @@ const handleNotificationSend = async (e) => {
                               "bullist numlist outdent indent | " +
                               "link image media table | removeformat | help",
                             image_advtab: true,
+                                                        file_picker_types: "image",
+                                                        file_picker_callback: (callback) => {
+                                                          const input = document.createElement("input");
+                                                          input.setAttribute("type", "file");
+                                                          input.setAttribute("accept", "image/*");
+                                                          input.onchange = () => {
+                                                            const file = input.files[0];
+                                                            const reader = new FileReader();
+                                                            reader.onload = () => {
+                                                              callback(reader.result, { alt: file.name });
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                          };
+                                                          input.click();
+                                                        },
                             image_caption: true,
                             object_resizing: true,
                             placeholder: "Write your message here...",
