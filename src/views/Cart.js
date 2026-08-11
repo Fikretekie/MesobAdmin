@@ -130,6 +130,7 @@ function Cart() {
 
   const [sendBtnLoading, setSendBtnLoading] = useState(false);
   const [sendMultipleBtnLoading, setSendMultipleBtnLoading] = useState(false);
+  const [sendProgress, setSendProgress] = useState("");
   const notificationAlertRef = useRef(null);
 
   const notify = (place, message, type) => {
@@ -242,43 +243,49 @@ function Cart() {
 
     const subjectMultipleUsers = subjectMultiUsers;
     const messageMultipleUsers = bodyMultiUsers;
+    const BATCH_SIZE = 20; // send this many at once, then wait, then next batch
 
     try {
       setSendMultipleBtnLoading(true);
 
-      // Send one separate, private email per recipient instead of one
-      // combined email — so no one sees anyone else's address.
-      const results = await Promise.allSettled(
-        selectedUsers.map((user) =>
-          axios.post(
-            "https://q0v1vrhy5g.execute-api.us-east-1.amazonaws.com/staging",
-            {
-              email: user.email,
-              message: messageMultipleUsers,
-              subject: subjectMultipleUsers,
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          )
-        )
-      );
+      let failedCount = 0;
+      for (let i = 0; i < selectedUsers.length; i += BATCH_SIZE) {
+        const batch = selectedUsers.slice(i, i + BATCH_SIZE);
+        setSendProgress(`Sending ${Math.min(i + BATCH_SIZE, selectedUsers.length)} of ${selectedUsers.length}...`);
 
-      const failed = results.filter((r) => r.status === "rejected");
+        const results = await Promise.allSettled(
+          batch.map((user) =>
+            axios.post(
+              "https://q0v1vrhy5g.execute-api.us-east-1.amazonaws.com/staging",
+              {
+                email: user.email,
+                message: messageMultipleUsers,
+                subject: subjectMultipleUsers,
+              },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            )
+          )
+        );
+
+        failedCount += results.filter((r) => r.status === "rejected").length;
+      }
 
       setSendMultipleBtnLoading(false);
+      setSendProgress("");
 
-      if (failed.length === 0) {
+      if (failedCount === 0) {
         setModalMultiUsers(false);
         setSubjectMultiUsers("");
         setBodyMultiUsers("");
         notify("tr", `Sent ${selectedUsers.length} individual emails successfully!`, "success");
-      } else if (failed.length < selectedUsers.length) {
+      } else if (failedCount < selectedUsers.length) {
         notify(
           "tr",
-          `Sent ${selectedUsers.length - failed.length} of ${selectedUsers.length} emails. ${failed.length} failed.`,
+          `Sent ${selectedUsers.length - failedCount} of ${selectedUsers.length} emails. ${failedCount} failed.`,
           "warning"
         );
       } else {
@@ -286,6 +293,7 @@ function Cart() {
       }
     } catch (error) {
       setSendMultipleBtnLoading(false);
+      setSendProgress("");
       console.error("Error sending emails:", error);
       notify("tr", "Error sending emails", "danger");
     }
@@ -782,6 +790,11 @@ function Cart() {
                 onEditorChange={handleMultiUsersEditorChange}
               />
             </FormGroup>
+            {sendProgress && (
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 10 }}>
+                {sendProgress}
+              </div>
+            )}
             <Button
               color="info"
               className="btn-round"
