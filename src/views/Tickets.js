@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DataTable from "react-data-table-component";
 import {
   Card,
@@ -9,14 +10,7 @@ import {
   Col,
   Input,
   Spinner,
-  Modal,
-  ModalHeader,
-  ModalBody,
-  FormGroup,
-  Label,
 } from "reactstrap";
-import useEmailTemplates from "hooks/useEmailTemplates";
-import TemplateCardGrid from "components/TemplateCardGrid";
 
 const TICKETS_API = "https://xe00jwul2g.execute-api.us-east-1.amazonaws.com/dev/tickets";
 
@@ -26,14 +20,11 @@ const STATUS_COLORS = {
 };
 
 function Tickets() {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [replyText, setReplyText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
-  const { templates } = useEmailTemplates();
+  const [activeTab, setActiveTab] = useState("open");
 
   const fetchTickets = async () => {
     try {
@@ -52,41 +43,35 @@ function Tickets() {
     fetchTickets();
   }, []);
 
-  const openTicket = (ticket) => {
-    setSelectedTicket(ticket);
-    setReplyText("");
-    setSelectedTemplateId(null);
-  };
+  const filteredData = tickets
+    .filter((t) => (t.status || "open") === activeTab)
+    .filter(
+      (t) =>
+        t.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.message?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  const handleSendReply = async () => {
-    if (!replyText.trim()) return;
-    try {
-      setSending(true);
-      const res = await fetch(`${TICKETS_API}/${selectedTicket.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ replyMessage: replyText, status: "closed" }),
-      });
-      const updated = await res.json();
-      setTickets((prev) =>
-        prev.map((t) => (t.id === updated.id ? updated : t))
-      );
-      setSelectedTicket(updated);
-      setReplyText("");
-      alert("Reply sent to the customer!");
-    } catch (err) {
-      console.error("Error sending reply:", err);
-      alert("Failed to send reply.");
-    } finally {
-      setSending(false);
-    }
-  };
+  const openCount = tickets.filter((t) => (t.status || "open") === "open").length;
+  const closedCount = tickets.filter((t) => t.status === "closed").length;
 
-  const filteredData = tickets.filter(
-    (t) =>
-      t.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.message?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const pillStyle = (active) => ({
+    borderRadius: "20px",
+    padding: "8px 18px",
+    fontWeight: 600,
+    fontSize: "12.5px",
+    border: "none",
+    cursor: "pointer",
+    marginRight: "8px",
+    ...(active
+      ? {
+          background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
+          color: "#0a0612",
+        }
+      : {
+          background: "rgba(255,255,255,0.06)",
+          color: "rgba(255,255,255,0.65)",
+        }),
+  });
 
   const columns = [
     {
@@ -112,10 +97,16 @@ function Tickets() {
       grow: 2,
     },
     {
+      name: "Last replied by",
+      selector: (row) =>
+        row.replies?.length ? row.replies[row.replies.length - 1].repliedBy : "-",
+      width: "180px",
+    },
+    {
       name: "Status",
       selector: (row) => row.status,
       cell: (row) => {
-        const c = STATUS_COLORS[row.status] || STATUS_COLORS.open;
+        const c = STATUS_COLORS[row.status || "open"];
         return (
           <span
             style={{
@@ -128,24 +119,24 @@ function Tickets() {
               textTransform: "capitalize",
             }}
           >
-            {row.status}
+            {row.status || "open"}
           </span>
         );
       },
-      width: "120px",
+      width: "110px",
     },
     {
       name: "Received",
       selector: (row) => row.createdAt,
       cell: (row) => new Date(row.createdAt).toLocaleString(),
       sortable: true,
-      width: "200px",
+      width: "190px",
     },
     {
       name: "Actions",
       cell: (row) => (
         <button
-          onClick={() => openTicket(row)}
+          onClick={() => navigate(`/admin/tickets/${row.id}`)}
           style={{
             background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
             color: "#0a0612",
@@ -157,254 +148,149 @@ function Tickets() {
             cursor: "pointer",
           }}
         >
-          View / Reply
+          Open
         </button>
       ),
-      width: "150px",
+      width: "110px",
     },
   ];
 
   return (
-    <>
-      <div
-        className="content"
-        style={{
-          background:
-            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
-          minHeight: "100vh",
-        }}
-      >
-        <Row>
-          <Col xs={12}>
-            <Card
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                backdropFilter: "blur(24px)",
-                border: "1px solid rgba(255,255,255,0.09)",
-                borderRadius: "16px",
-                boxShadow: "none",
-              }}
-            >
-              <CardHeader style={{ borderBottom: "none" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                    gap: 10,
-                  }}
-                >
-                  <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
-                    Support Tickets
-                  </CardTitle>
-                  <Input
-                    type="text"
-                    placeholder="Search by customer or message..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{
-                      width: "280px",
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      color: "#fff",
-                      borderRadius: "10px",
-                    }}
-                  />
-                </div>
-              </CardHeader>
-              <CardBody>
-                {loading ? (
-                  <div style={{ textAlign: "center", padding: "20px" }}>
-                    <Spinner color="primary" />
-                    <p style={{ color: "rgba(255,255,255,0.6)" }}>
-                      Loading tickets...
-                    </p>
-                  </div>
-                ) : (
-                  <DataTable
-                    columns={columns}
-                    data={filteredData}
-                    responsive
-                    highlightOnHover
-                    pagination
-                    paginationPerPage={25}
-                    paginationRowsPerPageOptions={[25, 50, 100]}
-                    noDataComponent="No support tickets yet."
-                    customStyles={{
-                      table: { style: { background: "transparent" } },
-                      headRow: {
-                        style: {
-                          background: "rgba(255,255,255,0.02)",
-                          borderBottom: "1px solid rgba(255,255,255,0.08)",
-                          minHeight: "44px",
-                        },
-                      },
-                      headCells: {
-                        style: {
-                          color: "rgba(255,255,255,0.45)",
-                          fontSize: "11px",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.4px",
-                          fontWeight: 600,
-                        },
-                      },
-                      rows: {
-                        style: {
-                          background: "transparent",
-                          color: "rgba(255,255,255,0.85)",
-                          borderBottom: "1px solid rgba(255,255,255,0.05)",
-                          minHeight: "52px",
-                          "&:hover": { background: "rgba(255,255,255,0.04)" },
-                        },
-                      },
-                      pagination: {
-                        style: {
-                          background: "transparent",
-                          color: "rgba(255,255,255,0.6)",
-                          borderTop: "1px solid rgba(255,255,255,0.08)",
-                        },
-                        pageButtonsStyle: {
-                          color: "rgba(255,255,255,0.6)",
-                          fill: "rgba(255,255,255,0.6)",
-                          "&:disabled": { fill: "rgba(255,255,255,0.2)" },
-                          "&:hover:not(:disabled)": {
-                            background: "rgba(255,255,255,0.08)",
-                          },
-                        },
-                      },
-                      noData: {
-                        style: {
-                          background: "transparent",
-                          color: "rgba(255,255,255,0.4)",
-                        },
-                      },
-                    }}
-                  />
-                )}
-              </CardBody>
-            </Card>
-          </Col>
-        </Row>
-      </div>
-
-      {/* Ticket detail / reply modal */}
-      <Modal
-        isOpen={!!selectedTicket}
-        toggle={() => setSelectedTicket(null)}
-        size="lg"
-        contentClassName="bg-dark"
-      >
-        <ModalHeader
-          toggle={() => setSelectedTicket(null)}
-          style={{ background: "#150f24", color: "#fff", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-        >
-          Ticket from {selectedTicket?.customerEmail}
-        </ModalHeader>
-        <ModalBody style={{ background: "#150f24", color: "#dbe7ff" }}>
-          <div
+    <div
+      className="content"
+      style={{
+        background:
+          "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+        minHeight: "100vh",
+      }}
+    >
+      <Row>
+        <Col xs={12}>
+          <Card
             style={{
               background: "rgba(255,255,255,0.04)",
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 20,
+              backdropFilter: "blur(24px)",
+              border: "1px solid rgba(255,255,255,0.09)",
+              borderRadius: "16px",
+              boxShadow: "none",
             }}
           >
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
-              {selectedTicket && new Date(selectedTicket.createdAt).toLocaleString()}
-            </div>
-            <div>{selectedTicket?.message}</div>
-          </div>
-
-          {selectedTicket?.replies?.length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
-                Previous Replies
-              </div>
-              {selectedTicket.replies.map((r, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: "rgba(167,139,250,0.1)",
-                    borderRadius: 12,
-                    padding: 12,
-                    marginBottom: 8,
-                  }}
-                >
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>
-                    {new Date(r.sentAt).toLocaleString()}
-                  </div>
-                  <div dangerouslySetInnerHTML={{ __html: r.message }} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          <FormGroup>
-            <Label style={{ display: "flex", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.55)" }}>
-              Quick Reply Templates
-              <span
+            <CardHeader style={{ borderBottom: "none" }}>
+              <div
                 style={{
-                  background: "linear-gradient(90deg, #f9a8d4, #a78bfa)",
-                  color: "#2a0a1f",
-                  fontSize: 10,
-                  fontWeight: 800,
-                  padding: "2px 8px",
-                  borderRadius: 6,
-                  textTransform: "uppercase",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 10,
                 }}
               >
-                Quick Pick
-              </span>
-            </Label>
-            <TemplateCardGrid
-              templates={templates}
-              selectedId={selectedTemplateId}
-              onSelect={(t) => {
-                setSelectedTemplateId(t.id);
-                setReplyText(t.message);
-              }}
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label style={{ color: "rgba(255,255,255,0.55)" }}>Your Reply</Label>
-            <Input
-              type="textarea"
-              rows={6}
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Type your reply to the customer..."
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "#fff",
-                borderRadius: "10px",
-              }}
-            />
-          </FormGroup>
-
-          <button
-            onClick={handleSendReply}
-            disabled={sending || !replyText.trim()}
-            style={{
-              background: sending || !replyText.trim()
-                ? "rgba(255,255,255,0.06)"
-                : "linear-gradient(90deg, #a78bfa, #60a5fa)",
-              color: sending || !replyText.trim() ? "rgba(255,255,255,0.35)" : "#0a0612",
-              border: "none",
-              borderRadius: "20px",
-              padding: "10px 20px",
-              fontSize: "13px",
-              fontWeight: 700,
-              cursor: sending || !replyText.trim() ? "not-allowed" : "pointer",
-            }}
-          >
-            {sending ? "Sending..." : "Send Reply & Close Ticket"}
-          </button>
-        </ModalBody>
-      </Modal>
-    </>
+                <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
+                  Support Tickets
+                </CardTitle>
+                <Input
+                  type="text"
+                  placeholder="Search by customer or message..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: "280px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#fff",
+                    borderRadius: "10px",
+                  }}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <button
+                  style={pillStyle(activeTab === "open")}
+                  onClick={() => setActiveTab("open")}
+                >
+                  Open ({openCount})
+                </button>
+                <button
+                  style={pillStyle(activeTab === "closed")}
+                  onClick={() => setActiveTab("closed")}
+                >
+                  Closed ({closedCount})
+                </button>
+              </div>
+            </CardHeader>
+            <CardBody>
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "20px" }}>
+                  <Spinner color="primary" />
+                  <p style={{ color: "rgba(255,255,255,0.6)" }}>
+                    Loading tickets...
+                  </p>
+                </div>
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={filteredData}
+                  responsive
+                  highlightOnHover
+                  pagination
+                  paginationPerPage={25}
+                  paginationRowsPerPageOptions={[25, 50, 100]}
+                  noDataComponent={`No ${activeTab} tickets.`}
+                  customStyles={{
+                    table: { style: { background: "transparent" } },
+                    headRow: {
+                      style: {
+                        background: "rgba(255,255,255,0.02)",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        minHeight: "44px",
+                      },
+                    },
+                    headCells: {
+                      style: {
+                        color: "rgba(255,255,255,0.45)",
+                        fontSize: "11px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.4px",
+                        fontWeight: 600,
+                      },
+                    },
+                    rows: {
+                      style: {
+                        background: "transparent",
+                        color: "rgba(255,255,255,0.85)",
+                        borderBottom: "1px solid rgba(255,255,255,0.05)",
+                        minHeight: "52px",
+                        "&:hover": { background: "rgba(255,255,255,0.04)" },
+                      },
+                    },
+                    pagination: {
+                      style: {
+                        background: "transparent",
+                        color: "rgba(255,255,255,0.6)",
+                        borderTop: "1px solid rgba(255,255,255,0.08)",
+                      },
+                      pageButtonsStyle: {
+                        color: "rgba(255,255,255,0.6)",
+                        fill: "rgba(255,255,255,0.6)",
+                        "&:disabled": { fill: "rgba(255,255,255,0.2)" },
+                        "&:hover:not(:disabled)": {
+                          background: "rgba(255,255,255,0.08)",
+                        },
+                      },
+                    },
+                    noData: {
+                      style: {
+                        background: "transparent",
+                        color: "rgba(255,255,255,0.4)",
+                      },
+                    },
+                  }}
+                />
+              )}
+            </CardBody>
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 }
 
