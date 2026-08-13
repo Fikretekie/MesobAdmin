@@ -191,6 +191,7 @@ function Cart() {
       email,
       message,
       subject,
+      fromEmail: "mesob@mesobstore.com",
     };
 
     try {
@@ -261,6 +262,7 @@ function Cart() {
                 email: user.email,
                 message: messageMultipleUsers,
                 subject: subjectMultipleUsers,
+                fromEmail: "mesob@mesobstore.com",
               },
               {
                 headers: {

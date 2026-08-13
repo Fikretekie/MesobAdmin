@@ -193,6 +193,7 @@ function Users() {
                 email: user.email,
                 message: messageMultipleUsers,
                 subject: subjectMultipleUsers,
+                fromEmail: "mesob@mesobstore.com",
               },
               {
                 headers: {
