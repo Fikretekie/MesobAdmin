@@ -25,6 +25,8 @@ function TicketDetail() {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [closeAfterReply, setCloseAfterReply] = useState(true);
+  const [statusChanging, setStatusChanging] = useState(false);
   const { templates } = useEmailTemplates();
 
   const adminEmail = localStorage.getItem("user_email") || "Unknown Admin";
@@ -55,7 +57,7 @@ function TicketDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           replyMessage: replyText,
-          status: "closed",
+          status: closeAfterReply ? "closed" : "open",
           repliedBy: adminEmail,
         }),
       });
@@ -69,6 +71,26 @@ function TicketDetail() {
       alert("Failed to send reply.");
     } finally {
       setSending(false);
+    }
+  };
+
+  // Sets the ticket's status directly, with no reply email involved —
+  // for marking something resolved without a response, or reopening one.
+  const handleStatusChange = async (newStatus) => {
+    try {
+      setStatusChanging(true);
+      const res = await fetch(`${TICKETS_API}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const updated = await res.json();
+      setTicket(updated);
+    } catch (err) {
+      console.error("Error changing status:", err);
+      alert("Failed to update ticket status.");
+    } finally {
+      setStatusChanging(false);
     }
   };
 
@@ -107,6 +129,8 @@ function TicketDetail() {
     );
   }
 
+  const isClosed = ticket.status === "closed";
+
   return (
     <div
       className="content"
@@ -128,41 +152,74 @@ function TicketDetail() {
             }}
           >
             <CardHeader style={{ borderBottom: "none" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <button
-                  onClick={() => navigate("/admin/tickets")}
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.7)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "20px",
-                    padding: "6px 14px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  ← Back to Tickets
-                </button>
-                <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
-                  {ticket.customerEmail}
-                </CardTitle>
-                <span
-                  style={{
-                    background:
-                      ticket.status === "closed"
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button
+                    onClick={() => navigate("/admin/tickets")}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      color: "rgba(255,255,255,0.7)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: "20px",
+                      padding: "6px 14px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ← Back to Tickets
+                  </button>
+                  <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
+                    {ticket.customerEmail}
+                  </CardTitle>
+                  <span
+                    style={{
+                      background: isClosed
                         ? "rgba(74,222,128,0.15)"
                         : "rgba(251,191,36,0.15)",
-                    color: ticket.status === "closed" ? "#86efac" : "#fde68a",
-                    padding: "4px 12px",
-                    borderRadius: 12,
-                    fontSize: 11,
+                      color: isClosed ? "#86efac" : "#fde68a",
+                      padding: "4px 12px",
+                      borderRadius: 12,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {ticket.status || "open"}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => handleStatusChange(isClosed ? "open" : "closed")}
+                  disabled={statusChanging}
+                  style={{
+                    background: isClosed
+                      ? "linear-gradient(90deg, #fde68a, #fbbf24)"
+                      : "linear-gradient(90deg, #86efac, #4ade80)",
+                    color: "#0a0612",
+                    border: "none",
+                    borderRadius: "20px",
+                    padding: "8px 18px",
+                    fontSize: "12px",
                     fontWeight: 700,
-                    textTransform: "capitalize",
+                    cursor: statusChanging ? "not-allowed" : "pointer",
+                    opacity: statusChanging ? 0.6 : 1,
                   }}
                 >
-                  {ticket.status || "open"}
-                </span>
+                  {statusChanging
+                    ? "Updating..."
+                    : isClosed
+                    ? "Reopen Ticket"
+                    : "Mark as Closed"}
+                </button>
               </div>
             </CardHeader>
             <CardBody>
@@ -199,11 +256,6 @@ function TicketDetail() {
                     Reply History
                   </div>
                   {ticket.replies.map((r, i) => {
-                    // Customer replies (captured from their email reply) are
-                    // marked from: "customer" and never have a repliedBy —
-                    // admin replies always have repliedBy set to the admin's
-                    // email. This tells the two apart instead of always
-                    // labeling everything "Admin".
                     const isCustomer = r.from === "customer";
                     return (
                       <div
@@ -301,6 +353,18 @@ function TicketDetail() {
                 />
               </FormGroup>
 
+              <FormGroup check style={{ marginBottom: 16 }}>
+                <Label check style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>
+                  <Input
+                    type="checkbox"
+                    checked={closeAfterReply}
+                    onChange={(e) => setCloseAfterReply(e.target.checked)}
+                    style={{ marginRight: 8 }}
+                  />
+                  Close this ticket after sending
+                </Label>
+              </FormGroup>
+
               <button
                 onClick={handleSendReply}
                 disabled={sending || !replyText.trim()}
@@ -321,7 +385,11 @@ function TicketDetail() {
                   cursor: sending || !replyText.trim() ? "not-allowed" : "pointer",
                 }}
               >
-                {sending ? "Sending..." : "Send Reply & Close Ticket"}
+                {sending
+                  ? "Sending..."
+                  : closeAfterReply
+                  ? "Send Reply & Close Ticket"
+                  : "Send Reply & Keep Open"}
               </button>
             </CardBody>
           </Card>
