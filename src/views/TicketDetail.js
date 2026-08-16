@@ -410,16 +410,35 @@ function TicketDetail() {
                 />
               </FormGroup>
 
-              <FormGroup check style={{ marginBottom: 16 }}>
-                <Label check style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>
-                  <Input
+              <FormGroup style={{ marginBottom: 16 }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    margin: 0,
+                  }}
+                >
+                  <input
                     type="checkbox"
                     checked={closeAfterReply}
                     onChange={(e) => setCloseAfterReply(e.target.checked)}
-                    style={{ marginRight: 8 }}
+                    style={{
+                      opacity: 1,
+                      position: "static",
+                      visibility: "visible",
+                      width: 16,
+                      height: 16,
+                      margin: 0,
+                      cursor: "pointer",
+                      accentColor: "#a78bfa",
+                    }}
                   />
                   Close this ticket after sending
-                </Label>
+                </label>
               </FormGroup>
 
               <button
