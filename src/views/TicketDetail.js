@@ -16,6 +16,69 @@ import useEmailTemplates from "hooks/useEmailTemplates";
 import TemplateCardGrid from "components/TemplateCardGrid";
 
 const TICKETS_API = "https://xe00jwul2g.execute-api.us-east-1.amazonaws.com/dev/tickets";
+const COLLAPSE_THRESHOLD = 220; // characters — messages longer than this get a Show more toggle
+
+// Design 1 colors: blue for the customer, green for admin replies —
+// higher-contrast/more saturated than a subtle tint, so the two are easy
+// to tell apart at a glance.
+const CUSTOMER_COLOR = {
+  bg: "rgba(96,165,250,0.22)",
+  border: "#3b82f6",
+  label: "#93c5fd",
+};
+const ADMIN_COLOR = {
+  bg: "rgba(74,222,128,0.22)",
+  border: "#22c55e",
+  label: "#86efac",
+};
+
+// A message block that truncates long text with a "Show more / Show less"
+// toggle, instead of always showing the full thing.
+function CollapsibleMessage({ text, isHtml }) {
+  const [expanded, setExpanded] = useState(false);
+  const plainLength = isHtml ? text.replace(/<[^>]*>/g, "").length : text.length;
+  const isLong = plainLength > COLLAPSE_THRESHOLD;
+
+  if (!isLong) {
+    return isHtml ? (
+      <div dangerouslySetInnerHTML={{ __html: text }} />
+    ) : (
+      <span>{text}</span>
+    );
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          maxHeight: expanded ? "none" : "60px",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        {isHtml ? (
+          <div dangerouslySetInnerHTML={{ __html: text }} />
+        ) : (
+          <span>{text}</span>
+        )}
+      </div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          background: "none",
+          border: "none",
+          color: "#93c5fd",
+          fontSize: 11,
+          fontWeight: 700,
+          cursor: "pointer",
+          padding: "6px 0 0",
+        }}
+      >
+        {expanded ? "Show less ▲" : "Show more ▼"}
+      </button>
+    </div>
+  );
+}
 
 function TicketDetail() {
   const { id } = useParams();
@@ -136,6 +199,7 @@ function TicketDetail() {
         background:
           "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
         minHeight: "100vh",
+        paddingTop: 24,
       }}
     >
       <Row>
@@ -223,8 +287,8 @@ function TicketDetail() {
             <CardBody>
               <div
                 style={{
-                  background: "rgba(96,165,250,0.1)",
-                  borderLeft: "3px solid #60a5fa",
+                  background: CUSTOMER_COLOR.bg,
+                  borderLeft: `4px solid ${CUSTOMER_COLOR.border}`,
                   borderRadius: 12,
                   padding: 16,
                   marginBottom: 20,
@@ -233,14 +297,16 @@ function TicketDetail() {
                 <div
                   style={{
                     fontSize: 11,
-                    color: "#93c5fd",
+                    color: CUSTOMER_COLOR.label,
                     marginBottom: 6,
                     fontWeight: 700,
                   }}
                 >
                   {ticket.customerEmail} (Customer) · {new Date(ticket.createdAt).toLocaleString()}
                 </div>
-                <div style={{ color: "#fff" }}>{ticket.message}</div>
+                <div style={{ color: "#fff" }}>
+                  <CollapsibleMessage text={ticket.message} isHtml={false} />
+                </div>
               </div>
 
               {ticket.replies?.length > 0 && (
@@ -257,25 +323,22 @@ function TicketDetail() {
                   </div>
                   {ticket.replies.map((r, i) => {
                     const isCustomer = r.from === "customer";
+                    const c = isCustomer ? CUSTOMER_COLOR : ADMIN_COLOR;
                     return (
                       <div
                         key={i}
                         style={{
-                          background: isCustomer
-                            ? "rgba(96,165,250,0.1)"
-                            : "rgba(167,139,250,0.15)",
+                          background: c.bg,
                           borderRadius: 12,
                           padding: 12,
                           marginBottom: 8,
-                          borderLeft: isCustomer
-                            ? "3px solid #60a5fa"
-                            : "3px solid #a78bfa",
+                          borderLeft: `4px solid ${c.border}`,
                         }}
                       >
                         <div
                           style={{
                             fontSize: 10,
-                            color: isCustomer ? "#93c5fd" : "#c4b5fd",
+                            color: c.label,
                             marginBottom: 4,
                             fontWeight: 700,
                           }}
@@ -285,14 +348,8 @@ function TicketDetail() {
                             : `${r.repliedBy || "Admin"} (You)`}{" "}
                           · {new Date(r.sentAt).toLocaleString()}
                         </div>
-                        <div
-                          style={{ color: "rgba(255,255,255,0.9)", whiteSpace: "pre-wrap" }}
-                        >
-                          {isCustomer ? (
-                            r.message
-                          ) : (
-                            <div dangerouslySetInnerHTML={{ __html: r.message }} />
-                          )}
+                        <div style={{ color: "rgba(255,255,255,0.95)", whiteSpace: "pre-wrap" }}>
+                          <CollapsibleMessage text={r.message} isHtml={!isCustomer} />
                         </div>
                       </div>
                     );

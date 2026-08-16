@@ -103,7 +103,7 @@ var dashRoutes = [
   {
     path: "/tickets",
     name: "Tickets",
-    icon: "ui-1_chat-49",
+    icon: "ui-2_chat-round",
     component: <Tickets />,
     layout: "/admin",
     allowedRoles: [0],
