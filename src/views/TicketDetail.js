@@ -198,33 +198,53 @@ function TicketDetail() {
                   >
                     Reply History
                   </div>
-                  {ticket.replies.map((r, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        background: "rgba(167,139,250,0.1)",
-                        borderRadius: 12,
-                        padding: 12,
-                        marginBottom: 8,
-                      }}
-                    >
+                  {ticket.replies.map((r, i) => {
+                    // Customer replies (captured from their email reply) are
+                    // marked from: "customer" and never have a repliedBy —
+                    // admin replies always have repliedBy set to the admin's
+                    // email. This tells the two apart instead of always
+                    // labeling everything "Admin".
+                    const isCustomer = r.from === "customer";
+                    return (
                       <div
+                        key={i}
                         style={{
-                          fontSize: 10,
-                          color: "rgba(255,255,255,0.5)",
-                          marginBottom: 4,
-                          fontWeight: 700,
+                          background: isCustomer
+                            ? "rgba(255,255,255,0.04)"
+                            : "rgba(167,139,250,0.1)",
+                          borderRadius: 12,
+                          padding: 12,
+                          marginBottom: 8,
+                          borderLeft: isCustomer
+                            ? "3px solid rgba(255,255,255,0.2)"
+                            : "3px solid #a78bfa",
                         }}
                       >
-                        {r.repliedBy || "Admin"} ·{" "}
-                        {new Date(r.sentAt).toLocaleString()}
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "rgba(255,255,255,0.5)",
+                            marginBottom: 4,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {isCustomer
+                            ? `${ticket.customerEmail} (Customer)`
+                            : r.repliedBy || "Admin"}{" "}
+                          · {new Date(r.sentAt).toLocaleString()}
+                        </div>
+                        <div
+                          style={{ color: "rgba(255,255,255,0.9)", whiteSpace: "pre-wrap" }}
+                        >
+                          {isCustomer ? (
+                            r.message
+                          ) : (
+                            <div dangerouslySetInnerHTML={{ __html: r.message }} />
+                          )}
+                        </div>
                       </div>
-                      <div
-                        style={{ color: "rgba(255,255,255,0.9)" }}
-                        dangerouslySetInnerHTML={{ __html: r.message }}
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
