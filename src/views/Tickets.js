@@ -175,34 +175,31 @@ function Tickets() {
               boxShadow: "none",
             }}
           >
-            <CardHeader style={{ borderBottom: "none" }}>
-              <div
+            <CardHeader style={{ borderBottom: "none", paddingBottom: 0 }}>
+              {/* Row 1: title only */}
+              <CardTitle tag="h4" style={{ color: "#fff", margin: "0 0 14px 0" }}>
+                Support Tickets
+              </CardTitle>
+
+              {/* Row 2: search — its own full-width row, never overlaps anything below it */}
+              <Input
+                type="text"
+                placeholder="Search by customer or message..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 10,
+                  width: "100%",
+                  maxWidth: "420px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#fff",
+                  borderRadius: "10px",
+                  marginBottom: 16,
                 }}
-              >
-                <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
-                  Support Tickets
-                </CardTitle>
-                <Input
-                  type="text"
-                  placeholder="Search by customer or message..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    width: "280px",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#fff",
-                    borderRadius: "10px",
-                  }}
-                />
-              </div>
-              <div style={{ marginTop: 16 }}>
+              />
+
+              {/* Row 3: tabs — its own row, clearly below the search */}
+              <div style={{ marginBottom: 16 }}>
                 <button
                   style={pillStyle(activeTab === "open")}
                   onClick={() => setActiveTab("open")}

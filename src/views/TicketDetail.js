@@ -74,8 +74,6 @@ function TicketDetail() {
     }
   };
 
-  // Sets the ticket's status directly, with no reply email involved —
-  // for marking something resolved without a response, or reopening one.
   const handleStatusChange = async (newStatus) => {
     try {
       setStatusChanging(true);
@@ -161,7 +159,7 @@ function TicketDetail() {
                   justifyContent: "space-between",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <button
                     onClick={() => navigate("/admin/tickets")}
                     style={{
@@ -225,7 +223,8 @@ function TicketDetail() {
             <CardBody>
               <div
                 style={{
-                  background: "rgba(255,255,255,0.04)",
+                  background: "rgba(96,165,250,0.1)",
+                  borderLeft: "3px solid #60a5fa",
                   borderRadius: 12,
                   padding: 16,
                   marginBottom: 20,
@@ -234,11 +233,12 @@ function TicketDetail() {
                 <div
                   style={{
                     fontSize: 11,
-                    color: "rgba(255,255,255,0.4)",
+                    color: "#93c5fd",
                     marginBottom: 6,
+                    fontWeight: 700,
                   }}
                 >
-                  Customer · {new Date(ticket.createdAt).toLocaleString()}
+                  {ticket.customerEmail} (Customer) · {new Date(ticket.createdAt).toLocaleString()}
                 </div>
                 <div style={{ color: "#fff" }}>{ticket.message}</div>
               </div>
@@ -262,27 +262,27 @@ function TicketDetail() {
                         key={i}
                         style={{
                           background: isCustomer
-                            ? "rgba(255,255,255,0.04)"
-                            : "rgba(167,139,250,0.1)",
+                            ? "rgba(96,165,250,0.1)"
+                            : "rgba(167,139,250,0.15)",
                           borderRadius: 12,
                           padding: 12,
                           marginBottom: 8,
                           borderLeft: isCustomer
-                            ? "3px solid rgba(255,255,255,0.2)"
+                            ? "3px solid #60a5fa"
                             : "3px solid #a78bfa",
                         }}
                       >
                         <div
                           style={{
                             fontSize: 10,
-                            color: "rgba(255,255,255,0.5)",
+                            color: isCustomer ? "#93c5fd" : "#c4b5fd",
                             marginBottom: 4,
                             fontWeight: 700,
                           }}
                         >
                           {isCustomer
                             ? `${ticket.customerEmail} (Customer)`
-                            : r.repliedBy || "Admin"}{" "}
+                            : `${r.repliedBy || "Admin"} (You)`}{" "}
                           · {new Date(r.sentAt).toLocaleString()}
                         </div>
                         <div
