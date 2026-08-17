@@ -65,6 +65,9 @@ function Sidebar(props) {
         .sidebar .logo:after {
           display: none !important;
         }
+        .sidebar:after {
+          background: linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%) !important;
+        }
       `}</style>
       <div
         className="logo"
