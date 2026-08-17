@@ -49,6 +49,11 @@ function Tickets() {
       (t) =>
         t.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.message?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt || b.createdAt) -
+        new Date(a.updatedAt || a.createdAt)
     );
 
   const openCount = tickets.filter((t) => (t.status || "open") === "open").length;
@@ -80,23 +85,6 @@ function Tickets() {
       sortable: true,
     },
     {
-      name: "Message",
-      selector: (row) => row.message,
-      cell: (row) => (
-        <div
-          style={{
-            maxWidth: 400,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {row.message}
-        </div>
-      ),
-      grow: 2,
-    },
-    {
       name: "Last replied by",
       selector: (row) =>
         row.replies?.length ? row.replies[row.replies.length - 1].repliedBy : "-",
@@ -126,32 +114,12 @@ function Tickets() {
       width: "110px",
     },
     {
-      name: "Received",
-      selector: (row) => row.createdAt,
-      cell: (row) => new Date(row.createdAt).toLocaleString(),
+      name: "Last Activity",
+      selector: (row) => row.updatedAt || row.createdAt,
+      cell: (row) =>
+        new Date(row.updatedAt || row.createdAt).toLocaleString(),
       sortable: true,
       width: "190px",
-    },
-    {
-      name: "Actions",
-      cell: (row) => (
-        <button
-          onClick={() => navigate(`/admin/tickets/${row.id}`)}
-          style={{
-            background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
-            color: "#0a0612",
-            border: "none",
-            borderRadius: "20px",
-            padding: "6px 16px",
-            fontSize: "11.5px",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          Open
-        </button>
-      ),
-      width: "110px",
     },
   ];
 
@@ -228,6 +196,8 @@ function Tickets() {
                   data={filteredData}
                   responsive
                   highlightOnHover
+                  pointerOnHover
+                  onRowClicked={(row) => navigate(`/admin/tickets/${row.id}`)}
                   pagination
                   paginationPerPage={25}
                   paginationRowsPerPageOptions={[25, 50, 100]}
