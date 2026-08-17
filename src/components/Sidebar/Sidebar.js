@@ -66,16 +66,48 @@ function Sidebar(props) {
           display: none !important;
         }
       `}</style>
-      <div className="logo" style={{ padding: "0 6px 20px", border: "none" }}>
-        <a href="#" className="simple-text logo-mini">
-          <div className="logo-img">
-            <img src={logo} alt="react-logo" />
+      <div
+        className="logo"
+        style={{
+          padding: "6px 8px 18px",
+          marginBottom: "10px",
+          border: "none",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+        }}
+      >
+        <a
+          href="#"
+          className="simple-text logo-mini"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "50%",
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(255,255,255,0.08)",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            className="logo-img"
+            style={{ width: "100%", height: "100%" }}
+          >
+            <img
+              src={logo}
+              alt="react-logo"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
         </a>
         <a
           href="#"
           className="simple-text logo-normal"
-          style={{ color: "#fff", fontWeight: 700 }}
+          style={{ color: "#fff", fontWeight: 500, fontSize: "15px" }}
         >
           Mesob Store
         </a>
@@ -96,8 +128,8 @@ function Sidebar(props) {
                 key={key}
                 style={{
                   listStyle: "none",
-                  borderRadius: "12px",
-                  marginBottom: "4px",
+                  borderRadius: "10px",
+                  margin: "3px 0",
                   background: isActive
                     ? "linear-gradient(90deg, #a78bfa, #60a5fa)"
                     : "transparent",
@@ -112,16 +144,17 @@ function Sidebar(props) {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "10px",
+                    gap: "12px",
                     padding: "11px 14px",
-                    borderRadius: "12px",
+                    borderRadius: "10px",
                     color: isActive ? "#0a0612" : "rgba(255,255,255,0.55)",
-                    fontWeight: isActive ? 700 : 600,
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: "13.5px",
                   }}
                 >
                   <i
                     className={"now-ui-icons " + prop.icon}
-                    style={{ color: "inherit" }}
+                    style={{ color: "inherit", fontSize: "17px" }}
                   />
                   <p style={{ margin: 0, color: "inherit" }}>{prop.name}</p>
                 </NavLink>
