@@ -214,34 +214,42 @@ function TicketDetail() {
             }}
           >
             <CardHeader style={{ borderBottom: "none" }}>
+              <div style={{ marginBottom: 12 }}>
+                <button
+                  onClick={() => navigate("/admin/tickets")}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    color: "rgba(255,255,255,0.7)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "20px",
+                    padding: "6px 14px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  ← Back to Tickets
+                </button>
+              </div>
+
+              <CardTitle
+                tag="h4"
+                style={{ color: "#fff", margin: "0 0 8px 0", wordBreak: "break-word" }}
+              >
+                {ticket.customerEmail}
+              </CardTitle>
+
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 12,
+                  gap: 8,
                   flexWrap: "wrap",
                   justifyContent: "space-between",
+                  marginBottom: 4,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => navigate("/admin/tickets")}
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.7)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "20px",
-                      padding: "6px 14px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ← Back to Tickets
-                  </button>
-                  <CardTitle tag="h4" style={{ color: "#fff", margin: 0 }}>
-                    {ticket.customerEmail}
-                  </CardTitle>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <span
                     style={{
                       background: isClosed
@@ -430,9 +438,12 @@ function TicketDetail() {
                   placeholder="Type your reply to the customer..."
                   style={{
                     background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderLeft: "3px solid #a78bfa",
+                    borderTop: "1px solid rgba(255,255,255,0.1)",
+                    borderRight: "1px solid rgba(255,255,255,0.1)",
+                    borderBottom: "1px solid rgba(255,255,255,0.1)",
                     color: "#fff",
-                    borderRadius: "10px",
+                    borderRadius: "0 10px 10px 0",
                   }}
                 />
               </FormGroup>
@@ -475,12 +486,15 @@ function TicketDetail() {
                   background:
                     sending || !replyText.trim()
                       ? "rgba(255,255,255,0.06)"
-                      : "linear-gradient(90deg, #a78bfa, #60a5fa)",
+                      : "rgba(167,139,250,0.2)",
                   color:
                     sending || !replyText.trim()
                       ? "rgba(255,255,255,0.35)"
-                      : "#0a0612",
-                  border: "none",
+                      : "#c4b5fd",
+                  border:
+                    sending || !replyText.trim()
+                      ? "1px solid rgba(255,255,255,0.1)"
+                      : "1px solid #a78bfa",
                   borderRadius: "20px",
                   padding: "10px 20px",
                   fontSize: "13px",
