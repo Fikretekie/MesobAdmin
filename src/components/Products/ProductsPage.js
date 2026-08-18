@@ -1087,9 +1087,6 @@ function Products() {
                     responsive
                     highlightOnHover
                     pointerOnHover
-                    pagination
-                    paginationPerPage={50}
-                    paginationRowsPerPageOptions={[25, 50, 100, 200]}
                     noDataComponent="No products found."
                     fixedHeader
                     onRowClicked={handleRowClick}

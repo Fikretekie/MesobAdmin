@@ -32,6 +32,13 @@ function Tickets() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("open");
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const fetchTickets = async () => {
     try {
@@ -90,36 +97,72 @@ function Tickets() {
       name: "Customer",
       selector: (row) => row.customerEmail,
       sortable: true,
-    },
-    {
-      name: "Source",
-      selector: (row) => row.source,
       cell: (row) => {
         const s = SOURCE_BADGES[row.source] || DEFAULT_SOURCE_BADGE;
         return (
-          <span
-            style={{
-              background: s.bg,
-              color: s.text,
-              padding: "4px 10px",
-              borderRadius: 8,
-              fontSize: 10.5,
-              fontWeight: 800,
-              letterSpacing: "0.4px",
-            }}
-          >
-            {s.label}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {row.customerEmail}
+            </span>
+            {isMobile && (
+              <span
+                style={{
+                  background: s.bg,
+                  color: s.text,
+                  padding: "2px 7px",
+                  borderRadius: 7,
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  letterSpacing: "0.3px",
+                  flexShrink: 0,
+                }}
+              >
+                {s.label}
+              </span>
+            )}
+          </div>
         );
       },
-      width: "100px",
     },
-    {
-      name: "Last replied by",
-      selector: (row) =>
-        row.replies?.length ? row.replies[row.replies.length - 1].repliedBy : "-",
-      width: "180px",
-    },
+    ...(isMobile
+      ? []
+      : [
+          {
+            name: "Source",
+            selector: (row) => row.source,
+            cell: (row) => {
+              const s = SOURCE_BADGES[row.source] || DEFAULT_SOURCE_BADGE;
+              return (
+                <span
+                  style={{
+                    background: s.bg,
+                    color: s.text,
+                    padding: "4px 10px",
+                    borderRadius: 8,
+                    fontSize: 10.5,
+                    fontWeight: 800,
+                    letterSpacing: "0.4px",
+                  }}
+                >
+                  {s.label}
+                </span>
+              );
+            },
+            width: "100px",
+          },
+          {
+            name: "Last replied by",
+            selector: (row) =>
+              row.replies?.length ? row.replies[row.replies.length - 1].repliedBy : "-",
+            width: "180px",
+          },
+        ]),
     {
       name: "Status",
       selector: (row) => row.status,
@@ -141,15 +184,17 @@ function Tickets() {
           </span>
         );
       },
-      width: "110px",
+      width: isMobile ? "80px" : "110px",
     },
     {
       name: "Last Activity",
       selector: (row) => row.updatedAt || row.createdAt,
-      cell: (row) =>
-        new Date(row.updatedAt || row.createdAt).toLocaleString(),
+      cell: (row) => {
+        const d = new Date(row.updatedAt || row.createdAt);
+        return isMobile ? d.toLocaleDateString() : d.toLocaleString();
+      },
       sortable: true,
-      width: "190px",
+      width: isMobile ? "90px" : "190px",
     },
   ];
 
