@@ -19,6 +19,13 @@ const STATUS_COLORS = {
   closed: { bg: "rgba(74,222,128,0.15)", text: "#86efac" },
 };
 
+const SOURCE_BADGES = {
+  contact_us_web: { label: "WEB", bg: "rgba(249,115,22,0.18)", text: "#fdba74" },
+  contact_us_app: { label: "APP", bg: "rgba(167,139,250,0.18)", text: "#c4b5fd" },
+  email_direct: { label: "EMAIL", bg: "rgba(74,222,128,0.18)", text: "#86efac" },
+};
+const DEFAULT_SOURCE_BADGE = { label: "OTHER", bg: "rgba(255,255,255,0.1)", text: "rgba(255,255,255,0.6)" };
+
 function Tickets() {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
@@ -83,6 +90,29 @@ function Tickets() {
       name: "Customer",
       selector: (row) => row.customerEmail,
       sortable: true,
+    },
+    {
+      name: "Source",
+      selector: (row) => row.source,
+      cell: (row) => {
+        const s = SOURCE_BADGES[row.source] || DEFAULT_SOURCE_BADGE;
+        return (
+          <span
+            style={{
+              background: s.bg,
+              color: s.text,
+              padding: "4px 10px",
+              borderRadius: 8,
+              fontSize: 10.5,
+              fontWeight: 800,
+              letterSpacing: "0.4px",
+            }}
+          >
+            {s.label}
+          </span>
+        );
+      },
+      width: "100px",
     },
     {
       name: "Last replied by",

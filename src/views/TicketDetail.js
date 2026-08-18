@@ -257,6 +257,33 @@ function TicketDetail() {
                   >
                     {ticket.status || "open"}
                   </span>
+                  {(() => {
+                    const SOURCE_BADGES = {
+                      contact_us_web: { label: "WEB", bg: "rgba(249,115,22,0.18)", text: "#fdba74" },
+                      contact_us_app: { label: "APP", bg: "rgba(167,139,250,0.18)", text: "#c4b5fd" },
+                      email_direct: { label: "EMAIL", bg: "rgba(74,222,128,0.18)", text: "#86efac" },
+                    };
+                    const s = SOURCE_BADGES[ticket.source] || {
+                      label: "OTHER",
+                      bg: "rgba(255,255,255,0.1)",
+                      text: "rgba(255,255,255,0.6)",
+                    };
+                    return (
+                      <span
+                        style={{
+                          background: s.bg,
+                          color: s.text,
+                          padding: "4px 12px",
+                          borderRadius: 12,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: "0.4px",
+                        }}
+                      >
+                        {s.label}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <button
