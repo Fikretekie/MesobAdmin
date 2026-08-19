@@ -1088,7 +1088,6 @@ function Products() {
                     highlightOnHover
                     pointerOnHover
                     noDataComponent="No products found."
-                    fixedHeader
                     onRowClicked={handleRowClick}
                     customStyles={{
                       table: {

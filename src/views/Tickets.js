@@ -273,9 +273,6 @@ function Tickets() {
                   highlightOnHover
                   pointerOnHover
                   onRowClicked={(row) => navigate(`/admin/tickets/${row.id}`)}
-                  pagination
-                  paginationPerPage={25}
-                  paginationRowsPerPageOptions={[25, 50, 100]}
                   noDataComponent={`No ${activeTab} tickets.`}
                   customStyles={{
                     table: { style: { background: "transparent" } },

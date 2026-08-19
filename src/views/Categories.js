@@ -526,11 +526,7 @@ function Categories() {
                     data={tableData}
                     responsive
                     highlightOnHover
-                    pagination
-                    paginationPerPage={50}
-                    paginationRowsPerPageOptions={[25, 50, 100]}
                     noDataComponent="No categories found."
-                    fixedHeader
                     customStyles={{
                       table: {
                         style: { background: "transparent" },

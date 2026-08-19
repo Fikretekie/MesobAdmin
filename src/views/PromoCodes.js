@@ -533,10 +533,6 @@ function PromoCodes() {
                     data={filteredData}
                     selectableRows
                     responsive
-                    fixedHeader={true}
-                    pagination
-                    paginationPerPage={100}
-                    paginationRowsPerPageOptions={[100, 200, 300, 500, 1000]}
                     highlightOnHover
                     customStyles={{
                       table: {

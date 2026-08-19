@@ -482,10 +482,6 @@ function Cart() {
                     selectableRows
                     onSelectedRowsChange={handleRowSelected}
                     responsive
-                    fixedHeader={true}
-                    pagination
-                    paginationPerPage={100}
-                    paginationRowsPerPageOptions={[100, 200, 300, 500, 1000]}
                     highlightOnHover
                     customStyles={tableCustomStyles}
                   />
@@ -704,9 +700,6 @@ function Cart() {
               size={"sm"}
               columns={[{ name: "Emails", selector: (row) => row.email }]}
               data={selectedUsers}
-              pagination
-              paginationPerPage={3}
-              paginationRowsPerPageOptions={[3, 10, 20, 50]}
               highlightOnHover
             />
           ) : (

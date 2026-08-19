@@ -318,9 +318,6 @@ function Financial_Dashboard() {
                     columns={columns}
                     data={latestSucceededOrders}
                     responsive
-                    pagination
-                    paginationPerPage={100}
-                    paginationRowsPerPageOptions={[100, 200, 300, 500, 1000]}
                     highlightOnHover
                   />
                 )}

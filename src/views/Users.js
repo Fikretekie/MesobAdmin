@@ -346,10 +346,6 @@ function Users() {
                     selectableRows
                     onSelectedRowsChange={handleRowSelected}
                     responsive
-                    fixedHeader={true}
-                    pagination
-                    paginationPerPage={100}
-                    paginationRowsPerPageOptions={[100, 200, 300, 500, 1000]}
                     highlightOnHover
                     customStyles={{
                       table: {
@@ -422,9 +418,6 @@ function Users() {
             <DataTable
               columns={[{ name: "Emails", selector: (row) => row.email }]}
               data={selectedRows}
-              pagination
-              paginationPerPage={3}
-              paginationRowsPerPageOptions={[3, 10, 20, 50]}
               highlightOnHover
             />
           ) : (

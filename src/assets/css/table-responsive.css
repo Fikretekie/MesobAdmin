@@ -1,0 +1,71 @@
+/*
+ * Makes every react-data-table-component table fit its container instead of
+ * forcing a horizontal scrollbar.
+ *
+ * Why this is needed: each table's columns were given fixed pixel widths
+ * (e.g. width: "300px"), which add up to more than the available space once
+ * the sidebar is accounted for — especially on laptops and phones. The
+ * library applies those widths as inline min-width/max-width on each cell,
+ * so they can only be overridden here with !important.
+ *
+ * Instead of fixed widths, cells now share the available space proportionally
+ * and truncate long text with an ellipsis, so the table always fits.
+ */
+
+/* The scrolling wrapper the library puts around the table */
+.rdt_TableWrapper,
+.rdt_Table {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Let rows use the full width */
+.rdt_TableRow,
+.rdt_TableHeadRow,
+.rdt_TableBody,
+.rdt_TableHead {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* The important part: drop the fixed pixel widths so columns flex to fit */
+.rdt_TableCell,
+.rdt_TableCol {
+  min-width: 0 !important;
+  max-width: none !important;
+  flex-grow: 1 !important;
+  flex-shrink: 1 !important;
+  flex-basis: 0 !important;
+}
+
+/* Long emails / ids / descriptions truncate rather than push the table wide */
+.rdt_TableCell > div,
+.rdt_TableCell > div > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Checkbox / action columns shouldn't stretch like text columns */
+.rdt_TableCell input[type="checkbox"],
+.rdt_TableCol input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+/* Belt-and-braces: stop any inner element from forcing the page wider */
+.rdt_TableWrapper * {
+  max-width: 100%;
+}
+
+/* On narrow screens, tighten padding so more content fits before truncating */
+@media (max-width: 768px) {
+  .rdt_TableCell,
+  .rdt_TableCol {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    font-size: 12px !important;
+  }
+}

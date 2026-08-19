@@ -38,7 +38,7 @@ const Orders = () => {
   const [activeTab, setActiveTab] = useState("1");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRows, setTotalRows] = useState(0);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(100);
   const navigate = useNavigate();
 
   const tableCustomStyles = {
@@ -515,7 +515,6 @@ const Orders = () => {
                     data={filteredOrders}
                     selectableRows
                     responsive
-                    fixedHeader={true}
                     pagination
                     paginationServer
                     paginationTotalRows={totalRows}
@@ -523,7 +522,7 @@ const Orders = () => {
                     onChangePage={handlePageChange}
                     onChangeRowsPerPage={handlePerRowsChange}
                     paginationPerPage={perPage}
-                    paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
+                    paginationComponentOptions={{ noRowsPerPage: true }}
                     highlightOnHover
                     customStyles={tableCustomStyles}
                   />
