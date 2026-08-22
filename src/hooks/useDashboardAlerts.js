@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const ALERTS_API = "https://x5tlald4r8.execute-api.us-east-1.amazonaws.com/dev";
 
-// How often to re-check for new orders/tickets while the panel is open.
-const POLL_INTERVAL_MS = 60000; // 1 minute
+// How often to re-check for new orders/tickets. Kept deliberately long
+// because the admin panel gets used on slow 2G connections — a shorter
+// interval just burns bandwidth re-downloading mostly-unchanged data.
+const POLL_INTERVAL_MS = 300000; // 5 minutes
 
 // We remember when the admin last opened the bell, so anything newer than
 // that counts as unread. Kept in localStorage so it survives page reloads
@@ -23,10 +25,12 @@ export default function useDashboardAlerts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastSeen, setLastSeen] = useState(getLastSeen);
+  const lastFetchRef = useRef(0);
 
   const fetchAlerts = useCallback(async () => {
     try {
       setError(null);
+      lastFetchRef.current = Date.now();
       const res = await fetch(ALERTS_API);
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const json = await res.json();
@@ -40,9 +44,41 @@ export default function useDashboardAlerts() {
   }, []);
 
   useEffect(() => {
+    let intervalId = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(fetchAlerts, POLL_INTERVAL_MS);
+    };
+
+    const stopPolling = () => {
+      if (!intervalId) return;
+      clearInterval(intervalId);
+      intervalId = null;
+    };
+
+    // Don't keep downloading in the background while the admin is in another
+    // tab — on a slow connection that bandwidth is better spent elsewhere.
+    // When they come back, refresh once if the data has gone stale.
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        if (Date.now() - lastFetchRef.current >= POLL_INTERVAL_MS) {
+          fetchAlerts();
+        }
+        startPolling();
+      }
+    };
+
     fetchAlerts();
-    const id = setInterval(fetchAlerts, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
+    startPolling();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [fetchAlerts]);
 
   // Called when the admin opens the bell — everything currently in the list
