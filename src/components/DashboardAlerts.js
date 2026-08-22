@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { Row, Col } from "reactstrap";
 import useDashboardAlerts from "hooks/useDashboardAlerts";
 
 // One card in the coloured strip. `tone` picks the accent colour, which is
@@ -29,10 +30,12 @@ function AlertCard({ tone, label, value, sub, onClick }) {
       <p
         style={{
           margin: 0,
-          fontSize: 10.5,
+          fontSize: 11,
+          fontWeight: 700,
+          lineHeight: 1.4,
           color: t.label,
           textTransform: "uppercase",
-          letterSpacing: "0.4px",
+          letterSpacing: "0.5px",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -121,56 +124,66 @@ function DashboardAlerts() {
       : "green";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 8,
-        flexWrap: "wrap",
-        marginBottom: 16,
-      }}
-    >
-      <AlertCard
-        tone={orders.needsAction > 0 ? "red" : "green"}
-        label="Needs action"
-        value={`${orders.needsAction ?? 0} order${orders.needsAction === 1 ? "" : "s"}`}
-        sub="Unshipped, last 7 days"
-        onClick={() => navigate("/admin/orders")}
-      />
+    <Row>
+      <Col xs="12">
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 16,
+          }}
+        >
+          <AlertCard
+            tone={orders.needsAction > 0 ? "red" : "green"}
+            label="Orders to ship"
+            value={orders.needsAction ?? 0}
+            sub="Unshipped, last 7 days"
+            onClick={() => navigate("/admin/orders")}
+          />
 
-      <AlertCard
-        tone={tickets.open > 0 ? ticketTone : "green"}
-        label="Open tickets"
-        value={tickets.open ?? 0}
-        sub={
-          tickets.open > 0 && tickets.oldestOpenLabel
-            ? `Oldest waiting ${tickets.oldestOpenLabel}`
-            : "All clear"
-        }
-        onClick={() => navigate("/admin/tickets")}
-      />
+          <AlertCard
+            tone={tickets.open > 0 ? ticketTone : "green"}
+            label="Open tickets"
+            value={tickets.open ?? 0}
+            sub={
+              tickets.open > 0 && tickets.oldestOpenLabel
+                ? `Oldest waiting ${tickets.oldestOpenLabel}`
+                : "All answered"
+            }
+            onClick={() => navigate("/admin/tickets")}
+          />
 
-      {email && (
-        <AlertCard
-          tone="blue"
-          label="Email left today"
-          value={email.remaining.toLocaleString()}
-          sub={`${email.sentLast24Hours.toLocaleString()} of ${email.max24HourSend.toLocaleString()} sent`}
-        />
-      )}
+          {email && (
+            <AlertCard
+              tone="blue"
+              label="Emails left today"
+              value={email.remaining.toLocaleString()}
+              sub={`${email.sentLast24Hours.toLocaleString()} of ${email.max24HourSend.toLocaleString()} used`}
+            />
+          )}
 
-      {email && (
-        <AlertCard
-          tone={bounceTone}
-          label="Bounce rate"
-          value={`${email.bounceRate}%`}
-          sub={
-            email.bounceStatus === "healthy"
-              ? "Healthy"
-              : "AWS suspends sending above 5%"
-          }
-        />
-      )}
-    </div>
+          {email && (
+            <AlertCard
+              tone={bounceTone}
+              label="Email delivery"
+              value={
+                email.bounceStatus === "healthy"
+                  ? "Good"
+                  : email.bounceStatus === "warning"
+                  ? "Watch"
+                  : "At risk"
+              }
+              sub={
+                email.bounceRate === 0
+                  ? "No failed deliveries"
+                  : `${email.bounceRate}% failed to deliver`
+              }
+            />
+          )}
+        </div>
+      </Col>
+    </Row>
   );
 }
 

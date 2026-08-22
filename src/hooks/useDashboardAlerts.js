@@ -1,193 +1,123 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Row, Col } from "reactstrap";
-import useDashboardAlerts from "hooks/useDashboardAlerts";
+import { useState, useEffect, useCallback, useRef } from "react";
 
-// One card in the coloured strip. `tone` picks the accent colour, which is
-// what makes an at-a-glance scan work — red means something needs doing.
-function AlertCard({ tone, label, value, sub, onClick }) {
-  const TONES = {
-    red: { bg: "rgba(239,68,68,0.14)", border: "#ef4444", label: "#fca5a5" },
-    amber: { bg: "rgba(251,191,36,0.14)", border: "#fbbf24", label: "#fde68a" },
-    green: { bg: "rgba(74,222,128,0.14)", border: "#22c55e", label: "#86efac" },
-    blue: { bg: "rgba(96,165,250,0.14)", border: "#60a5fa", label: "#93c5fd" },
+const ALERTS_API = "https://x5tlald4r8.execute-api.us-east-1.amazonaws.com/dev";
+
+// How often to re-check for new orders/tickets. Kept deliberately long
+// because the admin panel gets used on slow 2G connections — a shorter
+// interval just burns bandwidth re-downloading mostly-unchanged data.
+const POLL_INTERVAL_MS = 300000; // 5 minutes
+
+// We remember when the admin last opened the bell, so anything newer than
+// that counts as unread. Kept in localStorage so it survives page reloads
+// (no backend read/unread state needed).
+const LAST_SEEN_KEY = "notifications_last_seen";
+
+const getLastSeen = () => {
+  const stored = localStorage.getItem(LAST_SEEN_KEY);
+  return stored ? new Date(stored).getTime() : 0;
+};
+
+// Shared logic for the dashboard alert strip and the navbar notification
+// bell, so both read from the same single fetch instead of each polling
+// the API separately.
+export default function useDashboardAlerts() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastSeen, setLastSeen] = useState(getLastSeen);
+  const lastFetchRef = useRef(0);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      setError(null);
+      lastFetchRef.current = Date.now();
+      const res = await fetch(ALERTS_API);
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error("Error fetching dashboard alerts:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let intervalId = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(fetchAlerts, POLL_INTERVAL_MS);
+    };
+
+    const stopPolling = () => {
+      if (!intervalId) return;
+      clearInterval(intervalId);
+      intervalId = null;
+    };
+
+    // Don't keep downloading in the background while the admin is in another
+    // tab — on a slow connection that bandwidth is better spent elsewhere.
+    // When they come back, refresh once if the data has gone stale.
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        if (Date.now() - lastFetchRef.current >= POLL_INTERVAL_MS) {
+          fetchAlerts();
+        }
+        startPolling();
+      }
+    };
+
+    fetchAlerts();
+    startPolling();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [fetchAlerts]);
+
+  // Called when the admin opens the bell — everything currently in the list
+  // becomes "read" from that moment on.
+  const markAllRead = useCallback(() => {
+    const now = new Date().toISOString();
+    localStorage.setItem(LAST_SEEN_KEY, now);
+    setLastSeen(new Date(now).getTime());
+  }, []);
+
+  const notifications = (data?.notifications || []).map((n) => ({
+    ...n,
+    unread: new Date(n.timestamp).getTime() > lastSeen,
+  }));
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+
+  return {
+    data,
+    loading,
+    error,
+    notifications,
+    unreadCount,
+    markAllRead,
+    refresh: fetchAlerts,
   };
-  const t = TONES[tone] || TONES.blue;
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        flex: "1 1 150px",
-        minWidth: 0,
-        background: t.bg,
-        borderLeft: `3px solid ${t.border}`,
-        borderRadius: 8,
-        padding: "10px 12px",
-        cursor: onClick ? "pointer" : "default",
-      }}
-    >
-      <p
-        style={{
-          margin: 0,
-          fontSize: 11,
-          fontWeight: 700,
-          lineHeight: 1.4,
-          color: t.label,
-          textTransform: "uppercase",
-          letterSpacing: "0.5px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{
-          margin: "2px 0 0",
-          fontSize: 20,
-          fontWeight: 600,
-          color: "#fff",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {value}
-      </p>
-      {sub && (
-        <p
-          style={{
-            margin: "2px 0 0",
-            fontSize: 10.5,
-            color: "rgba(255,255,255,0.45)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {sub}
-        </p>
-      )}
-    </div>
-  );
 }
 
-function DashboardAlerts() {
-  const navigate = useNavigate();
-  const { data, loading, error } = useDashboardAlerts();
-
-  if (loading && !data) {
-    return (
-      <div
-        style={{
-          color: "rgba(255,255,255,0.4)",
-          fontSize: 12.5,
-          padding: "8px 4px 16px",
-        }}
-      >
-        Loading alerts...
-      </div>
-    );
-  }
-
-  if (error && !data) {
-    return (
-      <div
-        style={{
-          color: "#fca5a5",
-          fontSize: 12.5,
-          padding: "8px 4px 16px",
-        }}
-      >
-        Couldn't load alerts.
-      </div>
-    );
-  }
-
-  const orders = data?.orders || {};
-  const tickets = data?.tickets || {};
-  const email = data?.email;
-
-  // Tickets go amber only once something has actually been waiting a while —
-  // a brand new ticket isn't a problem yet.
-  const ticketTone =
-    tickets.oldestOpenHours >= 48 ? "red" : tickets.oldestOpenHours >= 12 ? "amber" : "green";
-
-  // Bounce rate drives its own colour, since crossing 5% gets SES suspended.
-  const bounceTone =
-    email?.bounceStatus === "critical"
-      ? "red"
-      : email?.bounceStatus === "warning"
-      ? "amber"
-      : "green";
-
-  return (
-    <Row>
-      <Col xs="12">
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-            marginBottom: 16,
-          }}
-        >
-          <AlertCard
-            tone={orders.needsAction > 0 ? "red" : "green"}
-            label="Orders to ship"
-            value={orders.needsAction ?? 0}
-            sub="Unshipped, last 7 days"
-            onClick={() => navigate("/admin/orders")}
-          />
-
-          <AlertCard
-            tone={tickets.open > 0 ? ticketTone : "green"}
-            label="Open tickets"
-            value={tickets.open ?? 0}
-            sub={
-              tickets.open > 0 && tickets.oldestOpenLabel
-                ? `Oldest waiting ${tickets.oldestOpenLabel}`
-                : "All answered"
-            }
-            onClick={() => navigate("/admin/tickets")}
-          />
-
-          {email && (
-            <AlertCard
-              tone="blue"
-              label="Emails left today"
-              value={email.remaining.toLocaleString()}
-              sub={`${email.sentLast24Hours.toLocaleString()} of ${email.max24HourSend.toLocaleString()} used`}
-            />
-          )}
-
-          {email && (
-            <AlertCard
-              tone={bounceTone}
-              // "Bounce rate: 0%" reads as though something is wrong at a
-              // glance. Phrasing it as delivery health with a plain-word
-              // value ("Good") is clearer, with the number as the detail.
-              label="Email delivery"
-              value={
-                email.bounceStatus === "healthy"
-                  ? "Good"
-                  : email.bounceStatus === "warning"
-                  ? "Watch"
-                  : "At risk"
-              }
-              sub={
-                email.bounceRate === 0
-                  ? "No failed deliveries"
-                  : `${email.bounceRate}% failed to deliver`
-              }
-            />
-          )}
-        </div>
-      </Col>
-    </Row>
-  );
-}
-
-export default DashboardAlerts;
+// Turns an ISO timestamp into "4 minutes ago" / "Yesterday" style text.
+export const timeAgo = (iso) => {
+  if (!iso) return "";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString();
+};
