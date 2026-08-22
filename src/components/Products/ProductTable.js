@@ -15,6 +15,26 @@ const thumbnailWrapperStyle = {
   border: "1px solid rgba(0,0,0,0.05)",
 };
 
+// The originals in S3 average ~565 kB each — far too big for a 60x60 cell,
+// and unusable for staff on 2G. Pre-generated 120x120 JPEGs live alongside
+// them under a "thumbs/" prefix (~5 kB each), so point at those instead.
+// If a thumbnail is missing for any reason, onError falls back to the
+// original so the image still shows.
+const S3_BUCKET_HOST = "appimagesabrehet.s3.amazonaws.com";
+
+const toThumbnailUrl = (url) => {
+  if (!url || !url.includes(S3_BUCKET_HOST)) return url;
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.replace(/^\//, "");
+    if (path.startsWith("thumbs/")) return url;
+    const withoutExt = path.replace(/\.[^./]+$/, "");
+    return `${parsed.origin}/thumbs/${withoutExt}.jpg`;
+  } catch (err) {
+    return url;
+  }
+};
+
 const thumbnailImageStyle = {
   width: "100%",
   height: "100%",
@@ -37,13 +57,20 @@ export const buildColumns = (onEdit, onDelete, isSeller = false) => {
         <div style={thumbnailWrapperStyle}>
           {row.content?.image ? (
             <img
-              src={row.content.image}
+              src={toThumbnailUrl(row.content.image)}
               alt={row.title}
               style={thumbnailImageStyle}
               // Without this the browser requests a thumbnail for every row
               // at once, which stalls completely on a slow connection.
               loading="lazy"
               decoding="async"
+              onError={(e) => {
+                // Thumbnail missing (e.g. product added since the batch run)
+                // — fall back to the original once, don't loop.
+                if (e.target.src !== row.content.image) {
+                  e.target.src = row.content.image;
+                }
+              }}
             />
           ) : (
             <div style={placeholderThumbStyle}>N/A</div>
