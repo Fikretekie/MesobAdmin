@@ -26,10 +26,18 @@ const toThumbnailUrl = (url) => {
   if (!url || !url.includes(S3_BUCKET_HOST)) return url;
   try {
     const parsed = new URL(url);
-    const path = parsed.pathname.replace(/^\//, "");
-    if (path.startsWith("thumbs/")) return url;
-    const withoutExt = path.replace(/\.[^./]+$/, "");
-    return `${parsed.origin}/thumbs/${withoutExt}.jpg`;
+    // S3 URLs encode spaces as "+" (and other characters as %XX), so decode
+    // back to the real key name before building the thumbnail path —
+    // otherwise "Eggs 30.PNG" is looked up as "Eggs+30.jpg" and 404s.
+    const rawPath = parsed.pathname.replace(/^\//, "");
+    const decoded = decodeURIComponent(rawPath.replace(/\+/g, " "));
+    if (decoded.startsWith("thumbs/")) return url;
+    const withoutExt = decoded.replace(/\.[^./]+$/, "");
+    const encoded = `thumbs/${withoutExt}.jpg`
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/");
+    return `${parsed.origin}/${encoded}`;
   } catch (err) {
     return url;
   }
