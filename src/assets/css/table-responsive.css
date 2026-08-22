@@ -20,6 +20,13 @@
   overflow-x: hidden !important;
 }
 
+/* ...but while a dropdown is open, let it show outside the table bounds */
+.rdt_TableWrapper:has(.dropdown-menu.show),
+.rdt_Table:has(.dropdown-menu.show),
+.rdt_TableBody:has(.dropdown-menu.show) {
+  overflow: visible !important;
+}
+
 /* Let rows use the full width */
 .rdt_TableRow,
 .rdt_TableHeadRow,
@@ -47,6 +54,26 @@
   white-space: nowrap;
   min-width: 0;
   max-width: 100%;
+}
+
+/*
+ * Exception: cells containing a dropdown (e.g. the Actions menu on Promo
+ * Codes) must NOT clip, or the opened menu is cut off inside the cell and
+ * its items can't be clicked. Columns like this set allowOverflow: true in
+ * their definition; these rules make sure the truncation above doesn't
+ * override that.
+ */
+.rdt_TableRow:has(.dropdown-menu.show),
+.rdt_TableCell:has(.dropdown),
+.rdt_TableCell:has(.dropdown) > div,
+.rdt_TableCell:has(.dropdown) > div > div {
+  overflow: visible !important;
+}
+
+.rdt_TableCell .dropdown-menu {
+  max-width: none !important;
+  white-space: normal;
+  z-index: 1000;
 }
 
 /* Checkbox / action columns shouldn't stretch like text columns */
