@@ -1087,6 +1087,13 @@ function Products() {
                     responsive
                     highlightOnHover
                     pointerOnHover
+                    // Rendering every product at once meant every thumbnail
+                    // requested at once, which never finished loading on 2G.
+                    // Fixed 25 per page; the rows-per-page dropdown stays
+                    // hidden so the pagination bar is just prev/next.
+                    pagination
+                    paginationPerPage={25}
+                    paginationComponentOptions={{ noRowsPerPage: true }}
                     noDataComponent="No products found."
                     onRowClicked={handleRowClick}
                     customStyles={{

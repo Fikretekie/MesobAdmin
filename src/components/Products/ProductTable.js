@@ -40,6 +40,10 @@ export const buildColumns = (onEdit, onDelete, isSeller = false) => {
               src={row.content.image}
               alt={row.title}
               style={thumbnailImageStyle}
+              // Without this the browser requests a thumbnail for every row
+              // at once, which stalls completely on a slow connection.
+              loading="lazy"
+              decoding="async"
             />
           ) : (
             <div style={placeholderThumbStyle}>N/A</div>
