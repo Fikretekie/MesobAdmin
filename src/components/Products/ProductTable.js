@@ -15,29 +15,46 @@ const thumbnailWrapperStyle = {
   border: "1px solid rgba(0,0,0,0.05)",
 };
 
-// The originals in S3 average ~565 kB each — far too big for a 60x60 cell,
-// and unusable for staff on 2G. Pre-generated 120x120 JPEGs live alongside
-// them under a "thumbs/" prefix (~5 kB each), so point at those instead.
-// If a thumbnail is missing for any reason, onError falls back to the
-// original so the image still shows.
-const S3_BUCKET_HOST = "appimagesabrehet.s3.amazonaws.com";
+// Product images live in two different S3 buckets, in two different URL
+// shapes:
+//   virtual-hosted: https://appimagesabrehet.s3.amazonaws.com/Egg.png
+//   path-style:     https://s3.us-east-1.amazonaws.com/abrehet.update.data.ui/Eggs+30.PNG
+// Both have pre-generated 120x120 JPEGs under a "thumbs/" prefix (~5 kB each,
+// vs originals averaging 0.5-2 MB). The originals are far too big for a 60x60
+// cell and made the page unusable for staff on 2G.
+const HOSTED_STYLE_BUCKET = "appimagesabrehet.s3.amazonaws.com";
+const PATH_STYLE_BUCKET = "abrehet.update.data.ui";
 
 const toThumbnailUrl = (url) => {
-  if (!url || !url.includes(S3_BUCKET_HOST)) return url;
+  if (!url) return url;
+  const isHosted = url.includes(HOSTED_STYLE_BUCKET);
+  const isPath = url.includes(`/${PATH_STYLE_BUCKET}/`);
+  if (!isHosted && !isPath) return url;
+
   try {
     const parsed = new URL(url);
     // S3 URLs encode spaces as "+" (and other characters as %XX), so decode
     // back to the real key name before building the thumbnail path —
     // otherwise "Eggs 30.PNG" is looked up as "Eggs+30.jpg" and 404s.
-    const rawPath = parsed.pathname.replace(/^\//, "");
-    const decoded = decodeURIComponent(rawPath.replace(/\+/g, " "));
+    let path = parsed.pathname.replace(/^\//, "");
+
+    // For path-style URLs the bucket name is the first path segment; keep it
+    // as a prefix so the rewritten URL still points at the right bucket.
+    let bucketPrefix = "";
+    if (isPath) {
+      bucketPrefix = `${PATH_STYLE_BUCKET}/`;
+      path = path.slice(bucketPrefix.length);
+    }
+
+    const decoded = decodeURIComponent(path.replace(/\+/g, " "));
     if (decoded.startsWith("thumbs/")) return url;
+
     const withoutExt = decoded.replace(/\.[^./]+$/, "");
     const encoded = `thumbs/${withoutExt}.jpg`
       .split("/")
       .map(encodeURIComponent)
       .join("/");
-    return `${parsed.origin}/${encoded}`;
+    return `${parsed.origin}/${bucketPrefix}${encoded}`;
   } catch (err) {
     return url;
   }
