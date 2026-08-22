@@ -46,7 +46,7 @@ import { Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@material-ui/i
 
 // core components
 import PanelHeader from "components/PanelHeader/PanelHeader.js";
-
+import DashboardAlerts from "components/DashboardAlerts";
 import axios from "axios";
 import { Helmet } from "react-helmet";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -782,6 +782,7 @@ function Dashboard() {
           minHeight: "100vh",
         }}
       >
+                <DashboardAlerts />
         <Row>
           <Col xs="12" sm="6" lg="3" md="6">
             <Card className="card-stats dashboard-stat-card dashboard-stat-card--warning" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
