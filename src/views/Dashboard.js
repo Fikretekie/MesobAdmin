@@ -68,6 +68,30 @@ const dashboardPageCache = {
   analyticsByFilter: {},
 };
 
+// Small "+12.3% vs last year" pill under each stat card.
+// `value` of null means last year's window had nothing to compare against.
+// `invert` is for figures where going UP is bad (cost).
+function ChangeBadge({ value, invert = false }) {
+  if (value === null || value === undefined) {
+    return (
+      <p style={{ margin: "4px 0 0", fontSize: "10.5px", color: "rgba(255,255,255,0.33)" }}>
+        no data last year
+      </p>
+    );
+  }
+  const flat = value === 0;
+  const up = value > 0;
+  const good = invert ? !up : up;
+  const color = flat ? "rgba(255,255,255,0.45)" : good ? "#4ade80" : "#f87171";
+  const arrow = flat ? "\u2013" : up ? "\u25b2" : "\u25bc";
+  return (
+    <p style={{ margin: "4px 0 0", fontSize: "11px", color, fontWeight: 600, whiteSpace: "nowrap" }}>
+      {arrow} {Math.abs(value)}%{" "}
+      <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>vs last year</span>
+    </p>
+  );
+}
+
 function Dashboard() {
   const [loading, setLoading] = useState(!dashboardPageCache.totalStats);
   const [Users, setUsers] = useState(dashboardPageCache.users ?? []);
@@ -135,6 +159,27 @@ function Dashboard() {
   const [webSessionsModalOpen, setWebSessionsModalOpen] = useState(false);
   const [loadingWebSessions, setLoadingWebSessions] = useState(false);
   const navigate = useNavigate();
+
+  // ---------------------------------------------------------------------
+  // Figures for the four stat cards.
+  //
+  // These used to come from `totalStats`, which is fetched once from the
+  // /dashboard endpoint and is always all-time - which is why the Today /
+  // 7 Days / This Month buttons never changed them. They now follow the
+  // selected filter, using whatever the purchases endpoint returned for
+  // that period, and fall back to the old all-time values until it loads.
+  // ---------------------------------------------------------------------
+  const periodStats = {
+    orders: purchaseData?.totalOrders ?? totalStats.totalOrders,
+    sales: purchaseData?.totalRevenue ?? totalStats.totalSales,
+    cost: purchaseData?.totalCost ?? totalStats.totalCost,
+    profit: purchaseData?.totalProfit ?? null,
+    // all-time shows every registered customer; a period shows new signups
+    users: timeFilter === "all" ? Users : (purchaseData?.newUsers ?? 0),
+  };
+  const periodChange = purchaseData?.change || null;
+  const topItems = purchaseData?.mostPurchased || [];
+  const topCustomers = purchaseData?.topCustomers || [];
 
   useEffect(() => {
     // Already have this from a previous visit — skip refetching
@@ -801,7 +846,10 @@ function Dashboard() {
                           <Spinner color="warning" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>{totalStats.totalOrders}</CardTitle>
+                        <>
+                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>{periodStats.orders}</CardTitle>
+                          <ChangeBadge value={periodChange?.orders} />
+                        </>
                       )}
                     </div>
                   </Col>
@@ -827,12 +875,15 @@ function Dashboard() {
                           <Spinner color="success" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
-                          ${Number(totalStats.totalSales).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </CardTitle>
+                        <>
+                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
+                            ${Number(periodStats.sales).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </CardTitle>
+                          <ChangeBadge value={periodChange?.revenue} />
+                        </>
                       )}
                     </div>
                   </Col>
@@ -858,12 +909,19 @@ function Dashboard() {
                           <Spinner color="danger" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
-                          ${Number(totalStats.totalCost).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </CardTitle>
+                        <>
+                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
+                            ${Number(periodStats.cost).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </CardTitle>
+                          {periodStats.profit !== null && (
+                            <p style={{ margin: '3px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
+                              profit ${Number(periodStats.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </Col>
@@ -883,19 +941,124 @@ function Dashboard() {
                   </Col>
                   <Col xs="7">
                     <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL USERS</p>
+                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>{timeFilter === "all" ? "TOTAL USERS" : "NEW USERS"}</p>
                       {loading ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
                           <Spinner color="primary" size="sm" />
                         </div>
                       ) : (
-                        <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
-                          {Users}
-                        </CardTitle>
+                        <>
+                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
+                            {periodStats.users}
+                          </CardTitle>
+                          {timeFilter !== "all" && <ChangeBadge value={periodChange?.newUsers} />}
+                        </>
                       )}
                     </div>
                   </Col>
                 </Row>
+              </CardBody>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* ------------------------------------------------------------------
+            Top sellers and best customers for the selected period.
+            Both come straight from the purchases endpoint, which reads the
+            5-minute cache - no extra request and no extra scan.
+           ------------------------------------------------------------------ */}
+        <Row>
+          <Col xs="12" lg="6">
+            <Card style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
+              <CardBody>
+                <p style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.55)', marginBottom: '2px' }}>
+                  TOP 10 ITEMS SOLD
+                </p>
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
+                  {timeFilter === "all" ? "All time" : "Selected period"} &middot; by revenue
+                </p>
+                {topItems.length === 0 ? (
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: 0 }}>
+                    No sales in this period.
+                  </p>
+                ) : (
+                  <div className="dashboard-table-wrapper">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', textTransform: 'uppercase' }}>
+                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>#</th>
+                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>Product</th>
+                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Qty</th>
+                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topItems.map((item, i) => (
+                          <tr key={`${item.title}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                            <td style={{ padding: '8px 4px', color: 'rgba(255,255,255,0.35)' }}>{i + 1}</td>
+                            <td style={{ padding: '8px 4px', color: '#fff', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.title}
+                            </td>
+                            <td style={{ padding: '8px 4px', textAlign: 'right', color: 'rgba(255,255,255,0.75)' }}>{item.count}</td>
+                            <td style={{ padding: '8px 4px', textAlign: 'right', color: '#4ade80', fontWeight: 600 }}>
+                              ${Number(item.revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          </Col>
+
+          <Col xs="12" lg="6">
+            <Card style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
+              <CardBody>
+                <p style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.55)', marginBottom: '2px' }}>
+                  TOP 10 CUSTOMERS
+                </p>
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
+                  {timeFilter === "all" ? "All time" : "Selected period"} &middot; by total spend (sender)
+                </p>
+                {topCustomers.length === 0 ? (
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: 0 }}>
+                    No customers in this period.
+                  </p>
+                ) : (
+                  <div className="dashboard-table-wrapper">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', textTransform: 'uppercase' }}>
+                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>#</th>
+                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>Customer</th>
+                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Orders</th>
+                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Spend</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topCustomers.map((c, i) => (
+                          <tr key={`${c.customer}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                            <td style={{ padding: '8px 4px', color: 'rgba(255,255,255,0.35)' }}>{i + 1}</td>
+                            <td style={{ padding: '8px 4px', color: '#fff', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {c.name || c.customer}
+                              {c.name && c.customer && c.name !== c.customer && (
+                                <span style={{ display: 'block', fontSize: '10.5px', color: 'rgba(255,255,255,0.35)' }}>
+                                  {c.customer}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '8px 4px', textAlign: 'right', color: 'rgba(255,255,255,0.75)' }}>{c.orders}</td>
+                            <td style={{ padding: '8px 4px', textAlign: 'right', color: '#60a5fa', fontWeight: 600 }}>
+                              ${Number(c.spend).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardBody>
             </Card>
           </Col>
