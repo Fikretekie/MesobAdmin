@@ -312,6 +312,46 @@ function mergeTopRows(periodRows, allRows, keyOf, timeFilter) {
   return rows.slice(0, 10);
 }
 
+/**
+ * Download the win-back list as a CSV, so it can go straight into a mail or
+ * SMS campaign. Built in the browser from data already on the page - no
+ * extra request, and nothing leaves the admin session.
+ */
+function downloadWinBackCsv(rows) {
+  const cell = (v) => {
+    const s = String(v ?? "");
+    // Leading =, +, - or @ makes Excel treat a cell as a formula; phone
+    // numbers start with + often enough that this matters.
+    const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
+
+  const header = ["Name", "Email", "Phone", "Spent", "Order date", "Country", "Items"];
+  const lines = [header.map(cell).join(",")];
+
+  for (const r of rows) {
+    lines.push([
+      r.name || "",
+      r.email || "",
+      r.phone || "",
+      Number(r.spend || 0).toFixed(2),
+      r.date ? new Date(r.date).toISOString().slice(0, 10) : "",
+      r.country || "",
+      (r.items || []).join(" | "),
+    ].map(cell).join(","));
+  }
+
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `mesob-win-back-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "12.5px" };
 const thStyle = {
   textAlign: "left", padding: "0 6px 8px", fontWeight: 600, fontSize: "10.5px",
@@ -369,6 +409,7 @@ function Dashboard() {
   const [categories, setCategories] = useState(dashboardPageCache.categories ?? []);
   const [subcategories, setSubcategories] = useState(dashboardPageCache.subcategories ?? []);
   const [searchQuery, setSearchQuery] = useState("");
+  const [winBackOpen, setWinBackOpen] = useState(false);
   const [viewsModalOpen, setViewsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productViewsBreakdown, setProductViewsBreakdown] = useState(null);
@@ -426,6 +467,12 @@ function Dashboard() {
   const recentOrders = purchaseData?.recentOrders || [];
   const allTimeItems = purchaseData?.allTimeTopItems || [];
   const allTimeCustomers = purchaseData?.allTimeTopCustomers || [];
+
+  // Customers who paid once and never came back. All-time by nature, so the
+  // period filter does not apply to it.
+  const oneTimers = purchaseData?.oneTimeCustomers || [];
+  const oneTimeMeta = purchaseData?.oneTimeMeta || null;
+  const oneTimeShown = winBackOpen ? oneTimers : oneTimers.slice(0, 10);
 
   // A quiet day used to leave these panels completely empty. Now the period's
   // own rows come first and are highlighted, and any remaining slots are
@@ -1464,6 +1511,109 @@ function Dashboard() {
           </Col>
         </Row>
 
+        {/* ==================================================================
+            WIN-BACK LIST
+            Customers who paid once and never came back. Shows the ten
+            biggest at rest, expands to the full list, and exports to CSV for
+            a mail or SMS campaign. All-time by nature, so the period filter
+            above does not change it.
+           ================================================================== */}
+        <Row>
+          <Col xs="12">
+            <Panel
+              title="Bought Once, Never Returned"
+              subtitle={
+                oneTimeMeta
+                  ? `${oneTimeMeta.total} of ${oneTimeMeta.totalCustomers} customers · $${Number(oneTimeMeta.value).toLocaleString(undefined, { maximumFractionDigits: 0 })} spent between them`
+                  : "Customers with a single paid order"
+              }
+              action={
+                oneTimers.length > 0 && (
+                  <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                    <PanelAction onClick={() => downloadWinBackCsv(oneTimers)}>
+                      Export CSV
+                    </PanelAction>
+                    {oneTimers.length > 10 && (
+                      <PanelAction onClick={() => setWinBackOpen((v) => !v)}>
+                        {winBackOpen ? "Show top 10" : `Show all ${oneTimers.length}`}
+                      </PanelAction>
+                    )}
+                  </div>
+                )
+              }
+            >
+              {oneTimers.length === 0 ? (
+                <EmptyNote>No one-time customers yet.</EmptyNote>
+              ) : (
+                <>
+                  <div
+                    className="dashboard-table-wrapper"
+                    style={winBackOpen ? { maxHeight: "420px", overflowY: "auto" } : undefined}
+                  >
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          <th style={{ ...thStyle, width: "22px" }}>#</th>
+                          <th style={thStyle}>Customer</th>
+                          <th style={thStyle}>Email</th>
+                          <th style={thStyle}>Phone</th>
+                          <th style={{ ...thStyle, textAlign: "right" }}>Spent</th>
+                          <th style={{ ...thStyle, textAlign: "right" }}>Last order</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {oneTimeShown.map((c, i) => (
+                          <tr key={`${c.key || c.email || c.name}-${i}`} style={trStyle}>
+                            <td style={{ ...tdStyle, ...rankStyle(true, "#fbbf24") }}>{i + 1}</td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                                <Avatar name={c.name} />
+                                <span style={{ color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "min(38vw, 170px)" }}>
+                                  {c.name}
+                                </span>
+                              </div>
+                            </td>
+                            <td style={{ ...tdStyle, color: "rgba(255,255,255,0.62)" }}>
+                              {c.email ? (
+                                <a href={`mailto:${c.email}`} style={{ color: "rgba(255,255,255,0.62)", textDecoration: "none", borderBottom: "1px dotted rgba(255,255,255,0.25)" }}>
+                                  {c.email}
+                                </a>
+                              ) : (
+                                <span style={{ color: "rgba(255,255,255,0.25)" }}>no email</span>
+                              )}
+                            </td>
+                            <td style={{ ...tdStyle, color: "rgba(255,255,255,0.62)", whiteSpace: "nowrap" }}>
+                              {c.phone ? (
+                                <a href={`tel:${String(c.phone).replace(/\s+/g, "")}`} style={{ color: "rgba(255,255,255,0.62)", textDecoration: "none", borderBottom: "1px dotted rgba(255,255,255,0.25)" }}>
+                                  {c.phone}
+                                </a>
+                              ) : (
+                                <span style={{ color: "rgba(255,255,255,0.25)" }}>no phone</span>
+                              )}
+                            </td>
+                            <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: "#fbbf24" }}>
+                              ${Number(c.spend).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </td>
+                            <td style={{ ...tdStyle, textAlign: "right", color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap" }}>
+                              {c.date
+                                ? new Date(c.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+                                : "--"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {!winBackOpen && oneTimers.length > 10 && (
+                    <p style={{ margin: "10px 0 0", fontSize: "11.5px", color: "rgba(255,255,255,0.35)" }}>
+                      Showing the 10 biggest of {oneTimers.length}.
+                    </p>
+                  )}
+                </>
+              )}
+            </Panel>
+          </Col>
+        </Row>
 
         {/* Analytics Section */}
         <Row>
