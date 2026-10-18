@@ -352,7 +352,11 @@ function downloadWinBackCsv(rows) {
   URL.revokeObjectURL(url);
 }
 
-const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "12.5px" };
+// tableLayout "fixed" is what stops these tables being wider than their
+// panel. Each table declares percentage column widths below, so the table
+// is always exactly the panel width and long values ellipsis inside their
+// own cell instead of pushing the table sideways into a scrollbar.
+const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "12.5px", tableLayout: "fixed" };
 const thStyle = {
   textAlign: "left", padding: "0 6px 8px", fontWeight: 600, fontSize: "10.5px",
   letterSpacing: "0.5px", textTransform: "uppercase", color: "rgba(255,255,255,0.38)",
@@ -1093,7 +1097,11 @@ function Dashboard() {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
         }
-        .dashboard-table-wrapper table { min-width: 380px; }
+        /* No desktop min-width: the fixed layout above already makes the
+           table exactly the panel width, so forcing a minimum here is what
+           produced a horizontal scrollbar on a perfectly wide screen.
+           Phones keep a minimum further down, where scrolling is normal. */
+        .dashboard-table-wrapper table { min-width: 0; }
 
         /* Thin, unobtrusive scrollbar - the default one is distracting on a
            dark panel and overlaps the last row. */
@@ -1375,6 +1383,13 @@ function Dashboard() {
               ) : (
                 <div className="dashboard-table-wrapper">
                   <table style={tableStyle}>
+                    <colgroup>
+                        <col style={{ width: "34%" }} />
+                        <col style={{ width: "14%" }} />
+                        <col style={{ width: "18%" }} />
+                        <col style={{ width: "18%" }} />
+                        <col style={{ width: "16%" }} />
+                      </colgroup>
                     <thead>
                       <tr>
                         <th style={thStyle}>Customer</th>
@@ -1388,9 +1403,9 @@ function Dashboard() {
                       {recentOrders.map((o) => (
                         <tr key={o.id} style={trStyle}>
                           <td style={tdStyle}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0 }}>
                               <Avatar name={o.customer} />
-                              <span style={{ color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "min(42vw, 180px)" }}>
+                              <span style={{ color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                                 {o.customer}
                               </span>
                             </div>
@@ -1429,6 +1444,12 @@ function Dashboard() {
               ) : (
                 <div className="dashboard-table-wrapper">
                   <table style={tableStyle}>
+                    <colgroup>
+                        <col style={{ width: "9%" }} />
+                        <col style={{ width: "47%" }} />
+                        <col style={{ width: "16%" }} />
+                        <col style={{ width: "28%" }} />
+                      </colgroup>
                     <thead>
                       <tr>
                         <th style={{ ...thStyle, width: "22px" }}>#</th>
@@ -1441,7 +1462,7 @@ function Dashboard() {
                       {itemRows.map((item, i) => (
                         <tr key={`${item.title}-${i}`} style={rowStyle(item.active)}>
                           <td style={{ ...tdStyle, ...rankStyle(item.active, "#34d399") }}>{i + 1}</td>
-                          <td style={{ ...tdStyle, color: item.active ? "#fff" : "rgba(255,255,255,0.42)", maxWidth: "min(42vw, 190px)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <td style={{ ...tdStyle, color: item.active ? "#fff" : "rgba(255,255,255,0.42)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {item.title}
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right", color: item.active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)" }}>
@@ -1475,12 +1496,18 @@ function Dashboard() {
               ) : (
                 <div className="dashboard-table-wrapper">
                   <table style={tableStyle}>
+                    <colgroup>
+                        <col style={{ width: "9%" }} />
+                        <col style={{ width: "45%" }} />
+                        <col style={{ width: "17%" }} />
+                        <col style={{ width: "29%" }} />
+                      </colgroup>
                     <thead>
                       <tr>
                         <th style={{ ...thStyle, width: "22px" }}>#</th>
                         <th style={thStyle}>Customer</th>
                         <th style={{ ...thStyle, textAlign: "right" }}>Orders</th>
-                        <th style={{ ...thStyle, textAlign: "right" }}>Total Spent</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>Spent</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1488,9 +1515,9 @@ function Dashboard() {
                         <tr key={`${c.customer}-${i}`} style={rowStyle(c.active)}>
                           <td style={{ ...tdStyle, ...rankStyle(c.active, "#60a5fa") }}>{i + 1}</td>
                           <td style={tdStyle}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "9px", opacity: c.active ? 1 : 0.45 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0, opacity: c.active ? 1 : 0.45 }}>
                               <Avatar name={c.name || c.customer} />
-                              <span style={{ color: c.active ? "#fff" : "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "min(42vw, 190px)" }}>
+                              <span style={{ color: c.active ? "#fff" : "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                                 {c.name || c.customer}
                               </span>
                             </div>
@@ -1551,6 +1578,14 @@ function Dashboard() {
                     style={winBackOpen ? { maxHeight: "420px", overflowY: "auto" } : undefined}
                   >
                     <table style={tableStyle}>
+                      <colgroup>
+                        <col style={{ width: "5%" }} />
+                        <col style={{ width: "22%" }} />
+                        <col style={{ width: "27%" }} />
+                        <col style={{ width: "18%" }} />
+                        <col style={{ width: "13%" }} />
+                        <col style={{ width: "15%" }} />
+                      </colgroup>
                       <thead>
                         <tr>
                           <th style={{ ...thStyle, width: "22px" }}>#</th>
@@ -1558,7 +1593,7 @@ function Dashboard() {
                           <th style={thStyle}>Email</th>
                           <th style={thStyle}>Phone</th>
                           <th style={{ ...thStyle, textAlign: "right" }}>Spent</th>
-                          <th style={{ ...thStyle, textAlign: "right" }}>Last order</th>
+                          <th style={{ ...thStyle, textAlign: "right" }}>Last</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1566,14 +1601,14 @@ function Dashboard() {
                           <tr key={`${c.key || c.email || c.name}-${i}`} style={trStyle}>
                             <td style={{ ...tdStyle, ...rankStyle(true, "#fbbf24") }}>{i + 1}</td>
                             <td style={tdStyle}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0 }}>
                                 <Avatar name={c.name} />
-                                <span style={{ color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "min(38vw, 170px)" }}>
+                                <span style={{ color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                                   {c.name}
                                 </span>
                               </div>
                             </td>
-                            <td style={{ ...tdStyle, color: "rgba(255,255,255,0.62)" }}>
+                            <td style={{ ...tdStyle, color: "rgba(255,255,255,0.62)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {c.email ? (
                                 <a href={`mailto:${c.email}`} style={{ color: "rgba(255,255,255,0.62)", textDecoration: "none", borderBottom: "1px dotted rgba(255,255,255,0.25)" }}>
                                   {c.email}
