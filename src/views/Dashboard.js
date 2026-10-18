@@ -68,29 +68,272 @@ const dashboardPageCache = {
   analyticsByFilter: {},
 };
 
-// Small "+12.3% vs last year" pill under each stat card.
-// `value` of null means last year's window had nothing to compare against.
-// `invert` is for figures where going UP is bad (cost).
-function ChangeBadge({ value, invert = false }) {
-  if (value === null || value === undefined) {
+// ---------------------------------------------------------------------------
+// Dashboard presentation helpers
+//
+// Kept at module scope (not inside Dashboard) so they are defined once rather
+// than rebuilt on every render.
+// ---------------------------------------------------------------------------
+
+const TONES = {
+  violet: { card: "rgba(139,92,246,0.10)", ring: "rgba(167,139,250,0.28)", icon: "linear-gradient(135deg,#8b5cf6,#6d28d9)" },
+  teal:   { card: "rgba(16,185,129,0.10)", ring: "rgba(52,211,153,0.28)",  icon: "linear-gradient(135deg,#10b981,#047857)" },
+  pink:   { card: "rgba(236,72,153,0.10)", ring: "rgba(244,114,182,0.28)", icon: "linear-gradient(135deg,#ec4899,#be185d)" },
+  blue:   { card: "rgba(59,130,246,0.10)", ring: "rgba(96,165,250,0.28)",  icon: "linear-gradient(135deg,#3b82f6,#1d4ed8)" },
+};
+
+const money0 = (n) =>
+  `${n < 0 ? "-" : ""}$${Math.abs(Number(n)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+/**
+ * The "+12.4%  +$1,240 vs last year" line under each stat card.
+ *
+ * pct   - percentage change, or null when last year had nothing to compare to
+ * delta - the raw difference, shown in dollars or as a count
+ */
+function ChangeLine({ pct, delta, kind = "money", unit = "" }) {
+  if (pct === undefined && delta === undefined) return null;
+
+  if (pct === null || pct === undefined) {
     return (
-      <p style={{ margin: "4px 0 0", fontSize: "10.5px", color: "rgba(255,255,255,0.33)" }}>
-        no data last year
+      <p style={{ margin: "6px 0 0", fontSize: "10.5px", color: "rgba(255,255,255,0.3)" }}>
+        nothing to compare last year
       </p>
     );
   }
-  const flat = value === 0;
-  const up = value > 0;
-  const good = invert ? !up : up;
-  const color = flat ? "rgba(255,255,255,0.45)" : good ? "#4ade80" : "#f87171";
-  const arrow = flat ? "\u2013" : up ? "\u25b2" : "\u25bc";
+
+  const flat = pct === 0 && (!delta || Math.round(delta) === 0);
+  const up = (delta ?? pct) > 0;
+  const color = flat ? "rgba(255,255,255,0.4)" : up ? "#4ade80" : "#f87171";
+  const arrow = flat ? "–" : up ? "▲" : "▼";
+
+  let deltaText = "";
+  if (delta !== undefined && delta !== null && !flat) {
+    const sign = delta > 0 ? "+" : "";
+    deltaText = kind === "money"
+      ? `${sign}${money0(delta)}`
+      : `${sign}${Math.round(delta).toLocaleString()}${unit ? " " + unit : ""}`;
+  }
+
   return (
-    <p style={{ margin: "4px 0 0", fontSize: "11px", color, fontWeight: 600, whiteSpace: "nowrap" }}>
-      {arrow} {Math.abs(value)}%{" "}
-      <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>vs last year</span>
+    <p style={{ margin: "6px 0 0", fontSize: "11.5px", color, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      {arrow} {Math.abs(pct)}%
+      {deltaText && <span style={{ marginLeft: "7px" }}>{deltaText}</span>}
+      <span className="stat-change-suffix" style={{ color: "rgba(255,255,255,0.35)", fontWeight: 400, marginLeft: "7px" }}>
+        vs last year
+      </span>
     </p>
   );
 }
+
+function StatCard({ tone, icon, label, value, pct, delta, deltaKind = "money", deltaUnit = "", sub, loading }) {
+  const t = TONES[tone] || TONES.violet;
+
+  // Pick a size band from the length of the figure itself. "202" keeps the
+  // full 26px; "$44,040.00" steps down; "$1,234,567.89" steps down again.
+  // Previously this was a fixed 25px with ellipsis, which is why a shared
+  // screen showed "$4..." instead of the number.
+  const text = String(value ?? "");
+  const sizeClass =
+    text.length >= 14 ? "stat-value stat-value--xlong"
+    : text.length >= 10 ? "stat-value stat-value--long"
+    : "stat-value";
+
+  return (
+    <div
+      className="stat-card"
+      style={{
+        marginBottom: "16px",
+        padding: "18px",
+        borderRadius: "18px",
+        background: `linear-gradient(135deg, ${t.card}, rgba(255,255,255,0.03))`,
+        border: `1px solid ${t.ring}`,
+        backdropFilter: "blur(24px)",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "14px",
+        minHeight: "104px",
+      }}
+    >
+      <div
+        className="stat-card-icon"
+        style={{
+          width: "50px", height: "50px", flexShrink: 0,
+          borderRadius: "14px", background: t.icon,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "19px", color: "#fff",
+        }}
+      >
+        <i className={icon} />
+      </div>
+
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <p style={{ margin: 0, fontSize: "11.5px", letterSpacing: "0.4px", color: "rgba(255,255,255,0.58)", fontWeight: 500 }}>
+          {label}
+        </p>
+        {loading ? (
+          <div style={{ marginTop: "6px" }}><Spinner size="sm" style={{ color: "#fff" }} /></div>
+        ) : (
+          <>
+            <p className={sizeClass} title={text}>
+              {value}
+            </p>
+            {sub && (
+              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>{sub}</p>
+            )}
+            <ChangeLine pct={pct} delta={delta} kind={deltaKind} unit={deltaUnit} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Panel({ title, subtitle, action, children }) {
+  return (
+    <div
+      className="dash-panel"
+      style={{
+        marginBottom: "16px",
+        padding: "18px",
+        borderRadius: "18px",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.09)",
+        backdropFilter: "blur(24px)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", marginBottom: "14px" }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: "15px", fontWeight: 600, color: "#fff" }}>{title}</p>
+          {subtitle && (
+            <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "rgba(255,255,255,0.4)" }}>{subtitle}</p>
+          )}
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PanelAction({ onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        flexShrink: 0,
+        background: "rgba(255,255,255,0.07)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        color: "rgba(255,255,255,0.8)",
+        borderRadius: "9px",
+        fontSize: "11.5px",
+        padding: "5px 12px",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function EmptyNote({ children }) {
+  return <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", margin: "4px 0 0" }}>{children}</p>;
+}
+
+const AVATAR_COLORS = ["#8b5cf6", "#10b981", "#ec4899", "#3b82f6", "#f59e0b", "#06b6d4", "#ef4444"];
+
+function Avatar({ name }) {
+  const text = (name || "?").trim();
+  const letter = text.charAt(0).toUpperCase() || "?";
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) hash = (hash + text.charCodeAt(i)) % AVATAR_COLORS.length;
+  return (
+    <span
+      style={{
+        width: "26px", height: "26px", flexShrink: 0, borderRadius: "50%",
+        background: AVATAR_COLORS[hash],
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        fontSize: "11px", fontWeight: 700, color: "#fff",
+      }}
+    >
+      {letter}
+    </span>
+  );
+}
+
+// Order statuses in this table are inconsistent ("Orderd" is the common
+// misspelling written by the app), so match loosely and fall back to neutral.
+const STATUS_TONES = [
+  { match: /deliver/i, bg: "rgba(16,185,129,0.18)",  fg: "#34d399", label: "Delivered" },
+  { match: /ship/i,    bg: "rgba(59,130,246,0.18)",  fg: "#60a5fa", label: "Shipped" },
+  { match: /process/i, bg: "rgba(139,92,246,0.18)",  fg: "#a78bfa", label: "Processing" },
+  { match: /pend/i,    bg: "rgba(245,158,11,0.18)",  fg: "#fbbf24", label: "Pending" },
+  { match: /order/i,   bg: "rgba(245,158,11,0.18)",  fg: "#fbbf24", label: "Ordered" },
+  { match: /cancel/i,  bg: "rgba(239,68,68,0.18)",   fg: "#f87171", label: "Cancelled" },
+];
+
+function StatusPill({ status }) {
+  const hit = STATUS_TONES.find((s) => s.match.test(status || "")) || {
+    bg: "rgba(255,255,255,0.08)", fg: "rgba(255,255,255,0.6)", label: status || "Unknown",
+  };
+  return (
+    <span style={{ background: hit.bg, color: hit.fg, borderRadius: "7px", padding: "3px 9px", fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap" }}>
+      {hit.label}
+    </span>
+  );
+}
+
+const PERIOD_LABELS = {
+  all: "all time",
+  daily: "today",
+  weekly: "the last 7 days",
+  monthly: "this month",
+  yearly: "this year",
+};
+
+/**
+ * Build a ten-row list that is never empty.
+ *
+ * Rows from the selected period come first and are flagged active. If there
+ * are fewer than ten, the rest are filled from the all-time list and flagged
+ * inactive, so the panel shows context instead of a blank box on a slow day.
+ * On the "all" filter everything is active, since the period IS all time.
+ */
+function mergeTopRows(periodRows, allRows, keyOf, timeFilter) {
+  const rows = (periodRows || []).map((r) => ({ ...r, active: true }));
+  if (timeFilter === "all") return rows.slice(0, 10);
+  const seen = new Set(rows.map(keyOf));
+  for (const r of allRows || []) {
+    if (rows.length >= 10) break;
+    if (seen.has(keyOf(r))) continue;
+    rows.push({ ...r, active: false });
+  }
+  return rows.slice(0, 10);
+}
+
+const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "12.5px" };
+const thStyle = {
+  textAlign: "left", padding: "0 6px 8px", fontWeight: 600, fontSize: "10.5px",
+  letterSpacing: "0.5px", textTransform: "uppercase", color: "rgba(255,255,255,0.38)",
+  borderBottom: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap",
+};
+const trStyle = { borderBottom: "1px solid rgba(255,255,255,0.05)" };
+
+// Rows that belong to the selected period get a lit left edge and a faint
+// tint; the all-time filler rows stay dim so the two never read as the same.
+const rowStyle = (active) => ({
+  borderBottom: "1px solid rgba(255,255,255,0.05)",
+  background: active ? "rgba(255,255,255,0.035)" : "transparent",
+});
+const rankStyle = (active, accent) => ({
+  color: active ? accent : "rgba(255,255,255,0.22)",
+  fontWeight: active ? 700 : 400,
+  borderLeft: active ? `2px solid ${accent}` : "2px solid transparent",
+  paddingLeft: "7px",
+});
+const tdStyle = { padding: "9px 6px", verticalAlign: "middle" };
+
 
 function Dashboard() {
   const [loading, setLoading] = useState(!dashboardPageCache.totalStats);
@@ -180,6 +423,33 @@ function Dashboard() {
   const periodChange = purchaseData?.change || null;
   const topItems = purchaseData?.mostPurchased || [];
   const topCustomers = purchaseData?.topCustomers || [];
+  const recentOrders = purchaseData?.recentOrders || [];
+  const allTimeItems = purchaseData?.allTimeTopItems || [];
+  const allTimeCustomers = purchaseData?.allTimeTopCustomers || [];
+
+  // A quiet day used to leave these panels completely empty. Now the period's
+  // own rows come first and are highlighted, and any remaining slots are
+  // filled from all-time and dimmed - so the panel always has ten rows and
+  // you can still tell at a glance what actually sold today.
+  const itemRows = mergeTopRows(topItems, allTimeItems, (r) => r.title, timeFilter);
+  const customerRows = mergeTopRows(topCustomers, allTimeCustomers, (r) => r.customer, timeFilter);
+  const periodLabel = PERIOD_LABELS[timeFilter] || "this period";
+  const statsLoading = loading || (analyticsLoading && !purchaseData);
+
+  // The actual difference against the same window last year, so each card can
+  // show "+$1,240" next to "+12.4%". Percentages alone hide whether a swing
+  // is worth reacting to.
+  const lastYear = purchaseData?.lastYear || null;
+  const deltas = lastYear
+    ? {
+        orders: periodStats.orders - lastYear.orders,
+        sales: periodStats.sales - lastYear.revenue,
+        profit: (periodStats.profit ?? 0) - lastYear.profit,
+        // all-time shows every registered customer, which has no meaningful
+        // year-ago counterpart - only compare within a period
+        users: timeFilter === "all" ? undefined : periodStats.users - lastYear.newUsers,
+      }
+    : null;
 
   useEffect(() => {
     // Already have this from a previous visit — skip refetching
@@ -758,16 +1028,77 @@ function Dashboard() {
         }
       />
       <style>{`
+        /* ------------------------------------------------------------------
+           RESPONSIVE RULES
+
+           The dashboard has to survive three situations, not just "desktop"
+           and "phone": a full window, a window sharing the screen with
+           another app (roughly 900-1300px, where four stat cards in a row
+           stop fitting), and a phone. Everything below is written so the
+           layout reflows rather than clipping - numbers shrink to fit, wide
+           tables scroll instead of being cut off, and nothing is ever
+           truncated to "$4...".
+           ------------------------------------------------------------------ */
+
+        /* Tables scroll at EVERY width, not only under 768px. This is what
+           was cutting the "Orders" column off the Top 10 Customers panel. */
+        .dashboard-table-wrapper {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        .dashboard-table-wrapper table { min-width: 380px; }
+
+        /* Thin, unobtrusive scrollbar - the default one is distracting on a
+           dark panel and overlaps the last row. */
+        .dashboard-table-wrapper::-webkit-scrollbar { height: 6px; }
+        .dashboard-table-wrapper::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.18);
+          border-radius: 3px;
+        }
+        .dashboard-table-wrapper::-webkit-scrollbar-track { background: transparent; }
+
+        /* Stat figures scale with the window instead of being ellipsed. The
+           three steps are picked by how many characters the number actually
+           has, so "$1,234,567.89" shrinks further than "202" ever needs to. */
+        .stat-value {
+          margin: 2px 0 0;
+          font-weight: 700;
+          color: #fff;
+          line-height: 1.15;
+          white-space: nowrap;
+          letter-spacing: -0.02em;
+          font-variant-numeric: tabular-nums;
+          font-size: clamp(17px, 1.45vw + 8px, 26px);
+        }
+        .stat-value--long  { font-size: clamp(15px, 1.15vw + 7px, 23px); }
+        .stat-value--xlong { font-size: clamp(13px, 0.95vw + 6px, 20px); }
+
+        /* "vs last year" is the first thing to go when the card gets tight -
+           the arrow, the percentage and the dollar difference matter more. */
+        .stat-change-suffix { display: inline; }
+
+        @media (max-width: 1400px) {
+          .stat-change-suffix { display: none; }
+        }
+
+        /* Shared-screen range: the icon tile gives up space before the
+           number does. */
+        @media (max-width: 1200px) {
+          .stat-card { padding: 15px !important; gap: 11px !important; }
+          .stat-card-icon {
+            width: 42px !important;
+            height: 42px !important;
+            font-size: 16px !important;
+            border-radius: 12px !important;
+          }
+        }
+
         @media (max-width: 768px) {
           .dashboard-table-wrapper {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
             margin: 0 -10px;
             padding: 0 10px;
           }
-          .dashboard-table-wrapper table {
-            min-width: 600px;
-          }
+          .dashboard-table-wrapper table { min-width: 460px; }
           .dashboard-card-header {
             flex-direction: column !important;
           }
@@ -783,8 +1114,28 @@ function Dashboard() {
           .MuiCardContent-root {
             padding: 12px !important;
           }
+          .dash-panel { padding: 15px !important; border-radius: 15px !important; }
+          .stat-card { min-height: 92px !important; }
         }
+
         @media (max-width: 576px) {
+          .dash-panel { padding: 13px !important; }
+          .stat-card { padding: 14px !important; min-height: 84px !important; }
+          .stat-card-icon {
+            width: 38px !important;
+            height: 38px !important;
+            font-size: 15px !important;
+          }
+          /* Filters stay on one swipeable line rather than stacking into a
+             five-row block that pushes the figures off the screen. */
+          .dash-filter-bar {
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+          }
+          .dash-filter-bar::-webkit-scrollbar { display: none; }
+          .dash-filter-bar .MuiButton-root { flex: 0 0 auto; }
           .card-stats .numbers {
             text-align: left;
           }
@@ -828,310 +1179,300 @@ function Dashboard() {
         }}
       >
                 <DashboardAlerts />
+
+        {/* ==================================================================
+            PERIOD SELECTOR
+            Sits above everything because it governs every figure on the
+            page - the stat cards, the three panels and the charts below.
+           ================================================================== */}
+        <div style={{ marginTop: "4px" }}>
+          <Box
+            display="flex"
+            gap={1}
+            mb={3}
+            flexWrap="wrap"
+            className="dash-filter-bar"
+            style={{
+              gap: '8px'
+            }}
+          >
+            <MUIButton
+              variant={timeFilter === "all" ? "contained" : "outlined"}
+              color="primary"
+              onClick={() => setTimeFilter("all")}
+              size="small"
+              style={timeFilterBtnStyle(timeFilter === "all")}
+            >
+              All Time
+            </MUIButton>
+            <MUIButton
+              variant={timeFilter === "daily" ? "contained" : "outlined"}
+              color="primary"
+              onClick={() => setTimeFilter("daily")}
+              size="small"
+              disabled={analyticsLoading}
+              style={timeFilterBtnStyle(timeFilter === "daily")}
+            >
+              Today
+            </MUIButton>
+            <MUIButton
+              variant={timeFilter === "weekly" ? "contained" : "outlined"}
+              color="primary"
+              onClick={() => setTimeFilter("weekly")}
+              size="small"
+              disabled={analyticsLoading}
+              style={timeFilterBtnStyle(timeFilter === "weekly")}
+            >
+              Last 7 Days
+            </MUIButton>
+            <MUIButton
+              variant={timeFilter === "monthly" ? "contained" : "outlined"}
+              color="primary"
+              onClick={() => setTimeFilter("monthly")}
+              size="small"
+              disabled={analyticsLoading}
+              style={timeFilterBtnStyle(timeFilter === "monthly")}
+            >
+              This Month
+            </MUIButton>
+            <MUIButton
+              variant={timeFilter === "yearly" ? "contained" : "outlined"}
+              color="primary"
+              onClick={() => setTimeFilter("yearly")}
+              size="small"
+              disabled={analyticsLoading}
+              style={timeFilterBtnStyle(timeFilter === "yearly")}
+            >
+              This Year
+            </MUIButton>
+          </Box>
+        </div>
+
+        {/* ==================================================================
+            STAT CARDS
+            Four figures for whichever period is selected, each with how it
+            compares to the same stretch of last year - shown as a percentage
+            AND as the actual difference in dollars or orders.
+           ================================================================== */}
         <Row>
-          <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--warning" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
-              <CardBody>
-                <Row>
-                  <Col xs="5">
-                    <div className="icon-big text-center">
-                      <i className="fas fa-shopping-cart text-warning" />
-                    </div>
-                  </Col>
-                  <Col xs="7">
-                    <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL ORDERS</p>
-                      {loading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
-                          <Spinner color="warning" size="sm" />
-                        </div>
-                      ) : (
-                        <>
-                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>{periodStats.orders}</CardTitle>
-                          <ChangeBadge value={periodChange?.orders} />
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                </Row>
-              </CardBody>
-            </Card>
+          <Col xs="12" sm="6" md="6" lg="6" xl="3">
+            <StatCard
+              tone="violet"
+              icon="fas fa-shopping-cart"
+              label="Total Orders"
+              value={periodStats.orders.toLocaleString()}
+              pct={periodChange?.orders}
+              delta={deltas?.orders}
+              deltaKind="count"
+              deltaUnit="orders"
+              loading={statsLoading}
+            />
           </Col>
 
-          <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--success" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
-              <CardBody>
-                <Row>
-                  <Col xs="5">
-                    <div className="icon-big text-center">
-                      <i className="fas fa-dollar-sign text-success" />
-                    </div>
-                  </Col>
-                  <Col xs="7">
-                    <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL SALES</p>
-                      {loading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
-                          <Spinner color="success" size="sm" />
-                        </div>
-                      ) : (
-                        <>
-                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
-                            ${Number(periodStats.sales).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </CardTitle>
-                          <ChangeBadge value={periodChange?.revenue} />
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                </Row>
-              </CardBody>
-            </Card>
+          <Col xs="12" sm="6" md="6" lg="6" xl="3">
+            <StatCard
+              tone="teal"
+              icon="fas fa-dollar-sign"
+              label="Total Sales"
+              value={`$${Number(periodStats.sales).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              pct={periodChange?.revenue}
+              delta={deltas?.sales}
+              deltaKind="money"
+              loading={statsLoading}
+            />
           </Col>
 
-          <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--danger" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
-              <CardBody>
-                <Row>
-                  <Col xs="5">
-                    <div className="icon-big text-center">
-                      <i className="fas fa-chart-line text-danger" />
-                    </div>
-                  </Col>
-                  <Col xs="7">
-                    <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>TOTAL COST</p>
-                      {loading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
-                          <Spinner color="danger" size="sm" />
-                        </div>
-                      ) : (
-                        <>
-                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
-                            ${Number(periodStats.cost).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </CardTitle>
-                          {periodStats.profit !== null && (
-                            <p style={{ margin: '3px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
-                              profit ${Number(periodStats.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                </Row>
-              </CardBody>
-            </Card>
+          <Col xs="12" sm="6" md="6" lg="6" xl="3">
+            <StatCard
+              tone="pink"
+              icon="fas fa-chart-line"
+              label="Total Profit"
+              value={periodStats.profit === null ? "--" : `$${Number(periodStats.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              pct={periodChange?.profit}
+              delta={deltas?.profit}
+              deltaKind="money"
+              sub={`cost $${Number(periodStats.cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              loading={statsLoading}
+            />
           </Col>
 
-          <Col xs="12" sm="6" lg="3" md="6">
-            <Card className="card-stats dashboard-stat-card dashboard-stat-card--primary" style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
-              <CardBody>
-                <Row>
-                  <Col xs="5">
-                    <div className="icon-big text-center">
-                      <i className="fas fa-users text-primary" />
-                    </div>
-                  </Col>
-                  <Col xs="7">
-                    <div className="numbers">
-                      <p className="card-category" style={{ fontSize: '12px', marginBottom: '5px', color: 'rgba(255,255,255,0.55)' }}>{timeFilter === "all" ? "TOTAL USERS" : "NEW USERS"}</p>
-                      {loading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '30px' }}>
-                          <Spinner color="primary" size="sm" />
-                        </div>
-                      ) : (
-                        <>
-                          <CardTitle tag="h3" style={{ fontSize: '1.5rem', marginBottom: 0, color: '#ffffff' }}>
-                            {periodStats.users}
-                          </CardTitle>
-                          {timeFilter !== "all" && <ChangeBadge value={periodChange?.newUsers} />}
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                </Row>
-              </CardBody>
-            </Card>
+          <Col xs="12" sm="6" md="6" lg="6" xl="3">
+            <StatCard
+              tone="blue"
+              icon="fas fa-users"
+              label={timeFilter === "all" ? "Total Customers" : "New Customers"}
+              value={Number(periodStats.users).toLocaleString()}
+              pct={timeFilter === "all" ? undefined : periodChange?.newUsers}
+              delta={timeFilter === "all" ? undefined : deltas?.users}
+              deltaKind="count"
+              loading={statsLoading}
+            />
           </Col>
         </Row>
 
-        {/* ------------------------------------------------------------------
-            Top sellers and best customers for the selected period.
-            Both come straight from the purchases endpoint, which reads the
-            5-minute cache - no extra request and no extra scan.
-           ------------------------------------------------------------------ */}
+        {/* ==================================================================
+            RECENT ORDERS  |  TOP SELLING PRODUCTS  |  TOP BUYING CUSTOMERS
+            All three read the same 5-minute cache the stat cards use, so
+            none of them costs an extra request or an extra table scan.
+           ================================================================== */}
         <Row>
-          <Col xs="12" lg="6">
-            <Card style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
-              <CardBody>
-                <p style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.55)', marginBottom: '2px' }}>
-                  TOP 10 ITEMS SOLD
-                </p>
-                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
-                  {timeFilter === "all" ? "All time" : "Selected period"} &middot; by revenue
-                </p>
-                {topItems.length === 0 ? (
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: 0 }}>
-                    No sales in this period.
-                  </p>
-                ) : (
-                  <div className="dashboard-table-wrapper">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                      <thead>
-                        <tr style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', textTransform: 'uppercase' }}>
-                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>#</th>
-                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>Product</th>
-                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Qty</th>
-                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Revenue</th>
+          {/* ---------------------------------------------- recent orders -- */}
+          <Col xs="12" xl="5">
+            <Panel
+              title="Recent Orders"
+              subtitle="Latest paid orders from your store"
+              action={<PanelAction onClick={() => navigate("/admin/orders")}>View All</PanelAction>}
+            >
+              {recentOrders.length === 0 ? (
+                <EmptyNote>No paid orders yet.</EmptyNote>
+              ) : (
+                <div className="dashboard-table-wrapper">
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>Customer</th>
+                        <th style={thStyle}>Items</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>Total</th>
+                        <th style={thStyle}>Status</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentOrders.map((o) => (
+                        <tr key={o.id} style={trStyle}>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                              <Avatar name={o.customer} />
+                              <span style={{ color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "min(42vw, 180px)" }}>
+                                {o.customer}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ ...tdStyle, color: "rgba(255,255,255,0.6)" }}>
+                            {o.items} {o.items === 1 ? "item" : "items"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", color: "#fff", fontWeight: 600 }}>
+                            ${Number(o.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td style={tdStyle}><StatusPill status={o.status} /></td>
+                          <td style={{ ...tdStyle, textAlign: "right", color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap" }}>
+                            {new Date(o.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {topItems.map((item, i) => (
-                          <tr key={`${item.title}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                            <td style={{ padding: '8px 4px', color: 'rgba(255,255,255,0.35)' }}>{i + 1}</td>
-                            <td style={{ padding: '8px 4px', color: '#fff', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {item.title}
-                            </td>
-                            <td style={{ padding: '8px 4px', textAlign: 'right', color: 'rgba(255,255,255,0.75)' }}>{item.count}</td>
-                            <td style={{ padding: '8px 4px', textAlign: 'right', color: '#4ade80', fontWeight: 600 }}>
-                              ${Number(item.revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardBody>
-            </Card>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
           </Col>
 
-          <Col xs="12" lg="6">
-            <Card style={{ marginBottom: '15px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '20px', boxShadow: 'none' }}>
-              <CardBody>
-                <p style={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.55)', marginBottom: '2px' }}>
-                  TOP 10 CUSTOMERS
-                </p>
-                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
-                  {timeFilter === "all" ? "All time" : "Selected period"} &middot; by total spend (sender)
-                </p>
-                {topCustomers.length === 0 ? (
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: 0 }}>
-                    No customers in this period.
-                  </p>
-                ) : (
-                  <div className="dashboard-table-wrapper">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                      <thead>
-                        <tr style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', textTransform: 'uppercase' }}>
-                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>#</th>
-                          <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: 600 }}>Customer</th>
-                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Orders</th>
-                          <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: 600 }}>Spend</th>
+          {/* -------------------------------------------- top selling ------ */}
+          <Col xs="12" md="6" xl="3">
+            <Panel
+              title="Top Selling Products"
+              subtitle={
+                timeFilter === "all"
+                  ? "Best performers, all time"
+                  : `Highlighted rows sold ${periodLabel}`
+              }
+            >
+              {itemRows.length === 0 ? (
+                <EmptyNote>No sales recorded yet.</EmptyNote>
+              ) : (
+                <div className="dashboard-table-wrapper">
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...thStyle, width: "22px" }}>#</th>
+                        <th style={thStyle}>Product</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>Sold</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {itemRows.map((item, i) => (
+                        <tr key={`${item.title}-${i}`} style={rowStyle(item.active)}>
+                          <td style={{ ...tdStyle, ...rankStyle(item.active, "#34d399") }}>{i + 1}</td>
+                          <td style={{ ...tdStyle, color: item.active ? "#fff" : "rgba(255,255,255,0.42)", maxWidth: "min(42vw, 190px)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {item.title}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", color: item.active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)" }}>
+                            {item.count}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: item.active ? "#34d399" : "rgba(52,211,153,0.4)" }}>
+                            ${Number(item.revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {topCustomers.map((c, i) => (
-                          <tr key={`${c.customer}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                            <td style={{ padding: '8px 4px', color: 'rgba(255,255,255,0.35)' }}>{i + 1}</td>
-                            <td style={{ padding: '8px 4px', color: '#fff', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {c.name || c.customer}
-                              {c.name && c.customer && c.name !== c.customer && (
-                                <span style={{ display: 'block', fontSize: '10.5px', color: 'rgba(255,255,255,0.35)' }}>
-                                  {c.customer}
-                                </span>
-                              )}
-                            </td>
-                            <td style={{ padding: '8px 4px', textAlign: 'right', color: 'rgba(255,255,255,0.75)' }}>{c.orders}</td>
-                            <td style={{ padding: '8px 4px', textAlign: 'right', color: '#60a5fa', fontWeight: 600 }}>
-                              ${Number(c.spend).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardBody>
-            </Card>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
+          </Col>
+
+          {/* ------------------------------------------ top customers ------ */}
+          <Col xs="12" md="6" xl="4">
+            <Panel
+              title="Top 10 Buying Customers"
+              subtitle={
+                timeFilter === "all"
+                  ? "Ranked by what the sender has spent"
+                  : `Highlighted rows bought ${periodLabel}`
+              }
+              action={<PanelAction onClick={() => navigate("/admin/users")}>View All</PanelAction>}
+            >
+              {customerRows.length === 0 ? (
+                <EmptyNote>No customers recorded yet.</EmptyNote>
+              ) : (
+                <div className="dashboard-table-wrapper">
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...thStyle, width: "22px" }}>#</th>
+                        <th style={thStyle}>Customer</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>Orders</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>Total Spent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customerRows.map((c, i) => (
+                        <tr key={`${c.customer}-${i}`} style={rowStyle(c.active)}>
+                          <td style={{ ...tdStyle, ...rankStyle(c.active, "#60a5fa") }}>{i + 1}</td>
+                          <td style={tdStyle}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "9px", opacity: c.active ? 1 : 0.45 }}>
+                              <Avatar name={c.name || c.customer} />
+                              <span style={{ color: c.active ? "#fff" : "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "min(42vw, 190px)" }}>
+                                {c.name || c.customer}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", color: c.active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)" }}>
+                            {c.orders}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: c.active ? "#60a5fa" : "rgba(96,165,250,0.4)" }}>
+                            ${Number(c.spend).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
           </Col>
         </Row>
+
 
         {/* Analytics Section */}
         <Row>
           <Col md={12}>
             <div style={{ padding: "15px 10px" }} className="analytics-section">
-              {/* Time Filter Buttons */}
-              <Box
-                display="flex"
-                gap={1}
-                mb={3}
-                flexWrap="wrap"
-                style={{
-                  gap: '8px'
-                }}
-              >
-                <MUIButton
-                  variant={timeFilter === "all" ? "contained" : "outlined"}
-                  color="primary"
-                  onClick={() => setTimeFilter("all")}
-                  size="small"
-                  style={timeFilterBtnStyle(timeFilter === "all")}
-                >
-                  All Time
-                </MUIButton>
-                <MUIButton
-                  variant={timeFilter === "daily" ? "contained" : "outlined"}
-                  color="primary"
-                  onClick={() => setTimeFilter("daily")}
-                  size="small"
-                  disabled={analyticsLoading}
-                  style={timeFilterBtnStyle(timeFilter === "daily")}
-                >
-                  Today
-                </MUIButton>
-                <MUIButton
-                  variant={timeFilter === "weekly" ? "contained" : "outlined"}
-                  color="primary"
-                  onClick={() => setTimeFilter("weekly")}
-                  size="small"
-                  disabled={analyticsLoading}
-                  style={timeFilterBtnStyle(timeFilter === "weekly")}
-                >
-                  Last 7 Days
-                </MUIButton>
-                <MUIButton
-                  variant={timeFilter === "monthly" ? "contained" : "outlined"}
-                  color="primary"
-                  onClick={() => setTimeFilter("monthly")}
-                  size="small"
-                  disabled={analyticsLoading}
-                  style={timeFilterBtnStyle(timeFilter === "monthly")}
-                >
-                  This Month
-                </MUIButton>
-                <MUIButton
-                  variant={timeFilter === "yearly" ? "contained" : "outlined"}
-                  color="primary"
-                  onClick={() => setTimeFilter("yearly")}
-                  size="small"
-                  disabled={analyticsLoading}
-                  style={timeFilterBtnStyle(timeFilter === "yearly")}
-                >
-                  This Year
-                </MUIButton>
-              </Box>
 
               {/* Sales Trend + Category Breakdown Charts */}
               <Grid container spacing={2} style={{ marginBottom: 20 }}>
-                <Grid item xs={6} md={8}>
+                <Grid item xs={12} md={8}>
                   <MUICard
                     style={{
                       height: '100%',
@@ -1196,7 +1537,7 @@ function Dashboard() {
                   </MUICard>
                 </Grid>
 
-                <Grid item xs={6} md={4}>
+                <Grid item xs={12} md={4}>
                   <MUICard
                     style={{
                       height: '100%',
