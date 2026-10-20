@@ -2,6 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 
+// Installs the session token on every API call (axios and fetch alike).
+// Imported first, for its side effects, so no request can go out without it.
+import "./authToken";
+
 import "bootstrap/dist/css/bootstrap.css";
 import "assets/scss/now-ui-dashboard.scss?v1.5.0";
 import "assets/css/demo.css";
