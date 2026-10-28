@@ -27,6 +27,8 @@ jobs:
 
       # Step 4: Build the production files
       - name: Build project
+        env:
+          REACT_APP_SUPPORT_CHAT_API_URL: ${{ secrets.REACT_APP_SUPPORT_CHAT_API_URL }}
         run: npm run build
 
       # Step 5: Configure AWS credentials (from the secrets you just added)
