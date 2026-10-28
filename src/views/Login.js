@@ -8,7 +8,6 @@ import logo from "logo.jpeg";
 import { Spinner } from "reactstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons"; // Import Font Awesome icons
-import { setToken } from "../authToken";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -67,10 +66,6 @@ const Login = () => {
       if (result.message == "success") {
         // Store data in localStorage
         console.log("user: ", result.user);
-
-        // The API now issues a signed session token. Stored first, because
-        // every API call the admin makes from here on carries it.
-        setToken(result.token);
 
         localStorage.setItem("user_email", result.user.email);
         localStorage.setItem("user_name", result.user.name);

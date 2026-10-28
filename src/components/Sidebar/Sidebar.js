@@ -23,6 +23,8 @@ import { Nav } from "reactstrap";
 import PerfectScrollbar from "perfect-scrollbar";
 
 import logo from "assets/img/logo-icon.png";
+import { useSupport } from "components/Support/SupportProvider";
+import UnreadBadge from "components/Support/UnreadBadge";
 
 var ps;
 
@@ -33,6 +35,7 @@ function Sidebar(props) {
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const userRole = getUserRole();
+  const { unreadTotal } = useSupport();
   const sidebar = React.useRef();
   const location = useLocation();
   // verifies if routeName is the one active (in browser input)
@@ -160,6 +163,9 @@ function Sidebar(props) {
                     style={{ color: "inherit", fontSize: "17px" }}
                   />
                   <p style={{ margin: 0, color: "inherit" }}>{prop.name}</p>
+                  {prop.supportBadge && (
+                    <UnreadBadge count={unreadTotal} className="ml-auto" />
+                  )}
                 </NavLink>
               </li>
             );

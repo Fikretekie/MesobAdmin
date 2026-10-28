@@ -9,6 +9,7 @@ const Products = React.lazy(() => import("components/Products/ProductsPage"));
 const Categories = React.lazy(() => import("views/Categories.js"));
 const Tickets = React.lazy(() => import("views/Tickets.js"));
 const TicketDetail = React.lazy(() => import("views/TicketDetail.js"));
+const Support = React.lazy(() => import("components/Support/SupportPage"));
 const SellerProductManagement = React.lazy(() => import("views/SellerProductManagement.js"));
 const SellerSubcategoryManagement = React.lazy(() => import("views/SellerSubcategoryManagement.js"));
 const SellerOrders = React.lazy(() => import("views/SellerOrders.js"));
@@ -113,6 +114,25 @@ var dashRoutes = [
     name: "Ticket Detail",
     invisible: true,
     component: <TicketDetail />,
+    layout: "/admin",
+    allowedRoles: [0],
+  },
+  // Live chat with app customers. Both routes render the same page, which
+  // stays mounted when moving between the list and a conversation.
+  {
+    path: "/support",
+    name: "Support",
+    icon: "tech_headphones",
+    component: <Support />,
+    layout: "/admin",
+    allowedRoles: [0],
+    supportBadge: true,
+  },
+  {
+    path: "/support/:userId",
+    name: "Support",
+    invisible: true,
+    component: <Support />,
     layout: "/admin",
     allowedRoles: [0],
   },

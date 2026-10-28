@@ -45,9 +45,6 @@ function DemoNavbar(props) {
     // Clear user session
     localStorage.removeItem("user_email");
     localStorage.removeItem("user_role");
-    // Drop the session token as well, or logging out would leave a valid
-    // key to the API sitting in the browser.
-    try { localStorage.removeItem("auth_token"); } catch (e) {}
 
     // Redirect to the login page
     navigate("/login");

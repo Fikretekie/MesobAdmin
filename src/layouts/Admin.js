@@ -14,6 +14,7 @@ import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import DemoNavbar from "components/Navbars/DemoNavbar.js";
 import Footer from "components/Footer/Footer.js";
 import Sidebar from "components/Sidebar/Sidebar.js";
+import { SupportProvider } from "components/Support/SupportProvider";
 
 import routes from "routes.js";
 
@@ -120,85 +121,89 @@ function Admin(props) {
   };
 
   return (
-    <div
-      className="wrapper app-dark-theme"
-      style={{
-        background:
-          "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
-        minHeight: "100vh",
-      }}
-    >
-      <Sidebar
-        {...props}
-        routes={accessibleRoutes}
-        backgroundColor={backgroundColor}
-      />
+    // The support inbox lives above the pages so the sidebar's unread badge
+    // and the Support page share one poll. Admins only, not sellers.
+    <SupportProvider enabled={basePath === "/admin" && userRole === 0}>
       <div
-        className="main-panel"
-        ref={mainPanel}
+        className="wrapper app-dark-theme"
         style={{
-          height: "100vh",
-          overflow: "auto",
           background:
             "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          minHeight: "100vh",
         }}
       >
-        <DemoNavbar {...props} />
-        <Suspense
-          fallback={
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                minHeight: "60vh",
-                color: "rgba(255,255,255,0.6)",
-                fontSize: "14px",
-              }}
-            >
-              Loading page...
-            </div>
-          }
+        <Sidebar
+          {...props}
+          routes={accessibleRoutes}
+          backgroundColor={backgroundColor}
+        />
+        <div
+          className="main-panel"
+          ref={mainPanel}
+          style={{
+            height: "100vh",
+            overflow: "auto",
+            background:
+              "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          }}
         >
-          <Routes>
-            {accessibleRoutes.map((prop, key) => (
-              <Route path={prop.path} element={prop.component} key={key} exact />
-            ))}
-            <Route
-              path={basePath === "/seller" ? "/seller" : "/admin"}
-              element={<Navigate to={`${basePath}${defaultRoute}`} replace />}
-            />
-          </Routes>
-        </Suspense>
-        <Footer fluid />
-        {showGoToTop && (
-          <button
-            className="go-to-top"
-            onClick={scrollToTop}
-            style={{
-              position: "fixed",
-              bottom: "20px",
-              right: "20px",
-              opacity: 1,
-              transition: "opacity 0.3s ease-in-out",
-              backgroundColor: "#2b2b2b",
-              color: "white",
-              border: "none",
-              borderRadius: "50%",
-              width: "50px",
-              height: "50px",
-              fontSize: "20px",
-              cursor: "pointer",
-              boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
-              zIndex: 1000,
-            }}
-            title="Scroll to top of page"
+          <DemoNavbar {...props} />
+          <Suspense
+            fallback={
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  minHeight: "60vh",
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "14px",
+                }}
+              >
+                Loading page...
+              </div>
+            }
           >
-            <FontAwesomeIcon icon={faArrowUp} />
-          </button>
-        )}
+            <Routes>
+              {accessibleRoutes.map((prop, key) => (
+                <Route path={prop.path} element={prop.component} key={key} exact />
+              ))}
+              <Route
+                path={basePath === "/seller" ? "/seller" : "/admin"}
+                element={<Navigate to={`${basePath}${defaultRoute}`} replace />}
+              />
+            </Routes>
+          </Suspense>
+          <Footer fluid />
+          {showGoToTop && (
+            <button
+              className="go-to-top"
+              onClick={scrollToTop}
+              style={{
+                position: "fixed",
+                bottom: "20px",
+                right: "20px",
+                opacity: 1,
+                transition: "opacity 0.3s ease-in-out",
+                backgroundColor: "#2b2b2b",
+                color: "white",
+                border: "none",
+                borderRadius: "50%",
+                width: "50px",
+                height: "50px",
+                fontSize: "20px",
+                cursor: "pointer",
+                boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                zIndex: 1000,
+              }}
+              title="Scroll to top of page"
+            >
+              <FontAwesomeIcon icon={faArrowUp} />
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </SupportProvider>
   );
 }
 
