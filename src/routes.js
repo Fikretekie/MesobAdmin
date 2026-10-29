@@ -1,4 +1,5 @@
 import React from "react";
+import LegacySupportRedirect from "components/Support/LegacySupportRedirect";
 
 const Dashboard = React.lazy(() => import("views/Dashboard.js"));
 const Notifications = React.lazy(() => import("views/Notifications.js"));
@@ -101,11 +102,32 @@ var dashRoutes = [
     layout: "/admin",
     allowedRoles: [0],
   },
+  // Tickets has two tabs: email/web tickets, and live chat with app customers.
+  // The badge counts unread chat messages.
   {
     path: "/tickets",
     name: "Tickets",
     icon: "ui-2_chat-round",
     component: <Tickets />,
+    layout: "/admin",
+    allowedRoles: [0],
+    supportBadge: true,
+  },
+  // Both chat routes render the same page, which stays mounted when moving
+  // between the list and a conversation. "chat" outranks "/tickets/:id".
+  {
+    path: "/tickets/chat",
+    name: "Live Chat",
+    invisible: true,
+    component: <Support />,
+    layout: "/admin",
+    allowedRoles: [0],
+  },
+  {
+    path: "/tickets/chat/:userId",
+    name: "Live Chat",
+    invisible: true,
+    component: <Support />,
     layout: "/admin",
     allowedRoles: [0],
   },
@@ -117,22 +139,20 @@ var dashRoutes = [
     layout: "/admin",
     allowedRoles: [0],
   },
-  // Live chat with app customers. Both routes render the same page, which
-  // stays mounted when moving between the list and a conversation.
+  // Old Support links (bookmarks, desktop notifications) land on Live chat.
   {
     path: "/support",
-    name: "Support",
-    icon: "tech_headphones",
-    component: <Support />,
+    name: "Live Chat",
+    invisible: true,
+    component: <LegacySupportRedirect />,
     layout: "/admin",
     allowedRoles: [0],
-    supportBadge: true,
   },
   {
     path: "/support/:userId",
-    name: "Support",
+    name: "Live Chat",
     invisible: true,
-    component: <Support />,
+    component: <LegacySupportRedirect />,
     layout: "/admin",
     allowedRoles: [0],
   },

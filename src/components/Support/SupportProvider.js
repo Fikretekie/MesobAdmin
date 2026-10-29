@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { useLocation, useNavigate } from "react-router-dom";
 import { isSupportConfigured } from "./config";
 import useInbox from "./useInbox";
+import { CHAT_PATH_RE, conversationPath } from "./paths";
 import { displayName } from "./format";
 import {
   isMuted,
@@ -21,9 +22,7 @@ const NO_SUPPORT = { enabled: false, unreadTotal: 0 };
 
 export const useSupport = () => useContext(SupportContext) || NO_SUPPORT;
 
-const SUPPORT_PATH = /^\/admin\/support(?:\/([^/]+))?\/?$/;
-
-export const conversationPath = (userId) => `/admin/support/${encodeURIComponent(userId)}`;
+export { conversationPath };
 
 /**
  * Mounted once in the admin layout. Holds the inbox poll (fast on the Support
@@ -37,7 +36,7 @@ export function SupportProvider({ enabled, children }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const match = location.pathname.match(SUPPORT_PATH);
+  const match = location.pathname.match(CHAT_PATH_RE);
   const pageMode = Boolean(match);
   const activeUserId = match && match[1] ? decodeURIComponent(match[1]) : null;
 

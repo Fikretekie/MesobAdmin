@@ -29,7 +29,7 @@ function useObjectUrls(files) {
 // Remounted per conversation (the thread is keyed by userId), so the draft
 // for each conversation - text and picked files - comes from, and goes back
 // to, the shared drafts map. The thread calls addFiles() for dropped files.
-const Composer = forwardRef(function Composer({ userId, drafts, onSend, onDraftChange }, ref) {
+const Composer = forwardRef(function Composer({ userId, customerName, drafts, onSend, onDraftChange }, ref) {
   const [draft, setDraft] = useState(() => (drafts.get(userId) || {}).text || "");
   const [files, setFiles] = useState(() => (drafts.get(userId) || {}).files || []);
   const [error, setError] = useState("");
@@ -179,8 +179,8 @@ const Composer = forwardRef(function Composer({ userId, drafts, onSend, onDraftC
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder="Type a reply…"
-            aria-label="Reply to customer"
+            placeholder="Write a reply…"
+            aria-label={`Reply to ${customerName}`}
           />
           {draft.length >= SHOW_COUNTER_AT && (
             <span
@@ -195,6 +195,10 @@ const Composer = forwardRef(function Composer({ userId, drafts, onSend, onDraftC
           <FontAwesomeIcon icon={faPaperPlane} />
         </button>
       </div>
+      <p className="support-composer-hint">
+        <kbd>Enter</kbd> to send · <kbd>Shift</kbd> + <kbd>Enter</kbd> for a new line · paste or drop
+        images and PDFs to attach
+      </p>
     </form>
   );
 });

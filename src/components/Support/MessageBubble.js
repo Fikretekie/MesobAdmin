@@ -7,6 +7,7 @@ import {
   faFilePdf,
   faImage,
 } from "@fortawesome/free-solid-svg-icons";
+import Avatar from "./Avatar";
 import { formatClock, splitLinks } from "./format";
 import { messageKey } from "./merge";
 import { formatBytes, isImageType, localPreviews } from "./attachments";
@@ -96,7 +97,20 @@ function FileAttachment({ attachment: a, onOpen }) {
   );
 }
 
-function MessageBubble({ message, seen, grouped, animate, onRetry, onOpenAttachment, onRefreshUrl }) {
+// `grouped`: continues the previous message's run; `last`: ends its run, so
+// it carries the time, the status and (for the customer) the avatar.
+function MessageBubble({
+  message,
+  seen,
+  grouped,
+  last,
+  customerId,
+  customerName,
+  animate,
+  onRetry,
+  onOpenAttachment,
+  onRefreshUrl,
+}) {
   // Decided once, when the bubble first mounts: history doesn't animate in,
   // and a later re-render must not restart the animation.
   const [enter] = useState(animate);
@@ -115,55 +129,66 @@ function MessageBubble({ message, seen, grouped, animate, onRetry, onOpenAttachm
         "support-msg",
         mine ? "is-mine" : "is-theirs",
         grouped ? "is-grouped" : "",
+        last ? "is-last" : "",
         enter ? "is-entering" : "",
         failed ? "is-failed" : "",
       ].join(" ")}
     >
-      <div className={`support-bubble${attachments.length > 0 ? " has-attachments" : ""}`}>
-        {images.length > 0 && (
-          <div className={`support-attachment-images${images.length > 1 ? " is-grid" : ""}`}>
-            {images.map((a) => (
-              <ImageAttachment key={a.key} attachment={a} onOpen={onOpenAttachment} onRefresh={onRefreshUrl} />
-            ))}
-          </div>
-        )}
-        {documents.length > 0 && (
-          <div className="support-attachment-files">
-            {documents.map((a) => (
-              <FileAttachment key={a.key} attachment={a} onOpen={onOpenAttachment} />
-            ))}
-          </div>
-        )}
-        {uploading && (
-          <div
-            className="support-upload"
-            role="progressbar"
-            aria-label="Uploading"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-          >
-            <span style={{ width: `${percent}%` }} />
-          </div>
-        )}
-        {message.text && (
-          <div className="support-bubble-text">
-            <MessageText text={message.text} />
-          </div>
-        )}
+      <div className="support-msg-row">
+        {!mine &&
+          (last ? (
+            <Avatar seed={customerId} name={customerName} size={28} />
+          ) : (
+            <span className="support-msg-avatar-gap" aria-hidden="true" />
+          ))}
+        <div className={`support-bubble${attachments.length > 0 ? " has-attachments" : ""}`}>
+          {images.length > 0 && (
+            <div className={`support-attachment-images${images.length > 1 ? " is-grid" : ""}`}>
+              {images.map((a) => (
+                <ImageAttachment key={a.key} attachment={a} onOpen={onOpenAttachment} onRefresh={onRefreshUrl} />
+              ))}
+            </div>
+          )}
+          {documents.length > 0 && (
+            <div className="support-attachment-files">
+              {documents.map((a) => (
+                <FileAttachment key={a.key} attachment={a} onOpen={onOpenAttachment} />
+              ))}
+            </div>
+          )}
+          {uploading && (
+            <div
+              className="support-upload"
+              role="progressbar"
+              aria-label="Uploading"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+            >
+              <span style={{ width: `${percent}%` }} />
+            </div>
+          )}
+          {message.text && (
+            <div className="support-bubble-text">
+              <MessageText text={message.text} />
+            </div>
+          )}
+        </div>
       </div>
-      <div className="support-msg-meta">
-        {failed ? (
-          <button type="button" className="support-retry" onClick={() => onRetry(message.clientId)}>
-            Not sent · Click to retry
-          </button>
-        ) : (
-          <>
-            <time dateTime={message.createdAt}>{formatClock(message.createdAt)}</time>
-            {mine && <Status message={message} seen={seen} />}
-          </>
-        )}
-      </div>
+      {(last || failed) && (
+        <div className="support-msg-meta">
+          {failed ? (
+            <button type="button" className="support-retry" onClick={() => onRetry(message.clientId)}>
+              Not sent · Click to retry
+            </button>
+          ) : (
+            <>
+              <time dateTime={message.createdAt}>{formatClock(message.createdAt)}</time>
+              {mine && <Status message={message} seen={seen} />}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

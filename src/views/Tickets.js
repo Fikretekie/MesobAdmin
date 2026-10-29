@@ -11,6 +11,7 @@ import {
   Input,
   Spinner,
 } from "reactstrap";
+import TicketsTabs from "components/Support/TicketsTabs";
 
 const TICKETS_API = "https://xe00jwul2g.execute-api.us-east-1.amazonaws.com/dev/tickets";
 
@@ -207,6 +208,7 @@ function Tickets() {
         minHeight: "100vh",
       }}
     >
+      <TicketsTabs />
       <Row>
         <Col xs={12}>
           <Card

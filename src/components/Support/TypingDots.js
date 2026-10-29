@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Avatar from "./Avatar";
 
 // Three dots bouncing in a staggered wave (keyframes in support.css).
 export function TypingDots() {
@@ -26,7 +27,7 @@ const LEAVE_MS = 160;
 
 // The bubble at the bottom of the thread. Stays mounted briefly after typing
 // stops so it can fade out instead of vanishing.
-export function TypingBubble({ show, name }) {
+export function TypingBubble({ show, name, seed }) {
   const [mounted, setMounted] = useState(show);
 
   useEffect(() => {
@@ -40,13 +41,16 @@ export function TypingBubble({ show, name }) {
 
   if (!show && !mounted) return null;
   return (
-    <div className="support-msg is-theirs">
-      <div
-        className={`support-bubble support-typing-bubble${show ? "" : " is-leaving"}`}
-        role="status"
-        aria-label={`${name} is typing`}
-      >
-        <TypingDots />
+    <div className="support-msg is-theirs is-last">
+      <div className="support-msg-row">
+        <Avatar seed={seed} name={name} size={28} />
+        <div
+          className={`support-bubble support-typing-bubble${show ? "" : " is-leaving"}`}
+          role="status"
+          aria-label={`${name} is typing`}
+        >
+          <TypingDots />
+        </div>
       </div>
     </div>
   );

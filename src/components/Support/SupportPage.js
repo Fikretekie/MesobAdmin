@@ -9,8 +9,9 @@ import {
   faDesktop,
   faHeadset,
 } from "@fortawesome/free-solid-svg-icons";
-import PanelHeader from "components/PanelHeader/PanelHeader.js";
 import { useSupport } from "./SupportProvider";
+import TicketsTabs from "./TicketsTabs";
+import { CHAT_PATH } from "./paths";
 import ConversationList from "./ConversationList";
 import ChatThread from "./ChatThread";
 import "./support.css";
@@ -20,8 +21,8 @@ import "./support.css";
 const MAX_PAGES_TO_FIND_LINKED = 5;
 
 // The inbox fills the window below the header, however tall the navbar and
-// toolbar turn out to be at this width. Re-measured when `layoutKey` changes
-// (on phones the toolbar hides while a conversation is open).
+// tab bar turn out to be at this width. Re-measured when `layoutKey` changes
+// (on phones the tab bar hides while a conversation is open).
 function useFillViewport(ref, layoutKey) {
   useLayoutEffect(() => {
     const el = ref.current;
@@ -65,6 +66,33 @@ function ToolbarButton({ icon, label, active, onClick, pressed }) {
   );
 }
 
+// Sound and desktop notification settings, on the right of the tab bar.
+function NotificationControls({ muted, toggleMute, permission, requestNotifications }) {
+  return (
+    <>
+      {permission === "default" && (
+        <ToolbarButton
+          icon={faDesktop}
+          label="Enable desktop notifications"
+          onClick={requestNotifications}
+        />
+      )}
+      {permission === "denied" && (
+        <span className="support-toolbar-hint">
+          Desktop notifications are blocked for this site in your browser settings
+        </span>
+      )}
+      <ToolbarButton
+        icon={muted ? faBellSlash : faBell}
+        label="Mute notifications"
+        active={muted}
+        pressed={muted}
+        onClick={toggleMute}
+      />
+    </>
+  );
+}
+
 function SupportInbox({ support }) {
   const navigate = useNavigate();
   const {
@@ -99,28 +127,14 @@ function SupportInbox({ support }) {
   return (
     <div className={`support-inbox${activeUserId ? " has-thread" : ""}`}>
       <div className="support-toolbar">
-        <p className="support-toolbar-info">Live chat with app customers</p>
-        <div className="support-toolbar-actions">
-          {permission === "default" && (
-            <ToolbarButton
-              icon={faDesktop}
-              label="Enable desktop notifications"
-              onClick={requestNotifications}
-            />
-          )}
-          {permission === "denied" && (
-            <span className="support-toolbar-hint">
-              Desktop notifications are blocked for this site in your browser settings
-            </span>
-          )}
-          <ToolbarButton
-            icon={muted ? faBellSlash : faBell}
-            label="Mute notifications"
-            active={muted}
-            pressed={muted}
-            onClick={toggleMute}
+        <TicketsTabs>
+          <NotificationControls
+            muted={muted}
+            toggleMute={toggleMute}
+            permission={permission}
+            requestNotifications={requestNotifications}
           />
-        </div>
+        </TicketsTabs>
       </div>
 
       <div ref={shellRef} className="support-shell">
@@ -134,12 +148,19 @@ function SupportInbox({ support }) {
               drafts={drafts}
               onRead={inbox.noteRead}
               announce={announce}
-              onBack={() => navigate("/admin/support")}
+              onBack={() => navigate(CHAT_PATH)}
             />
           ) : (
             <div className="support-select">
-              <FontAwesomeIcon icon={faComments} aria-hidden="true" />
-              <p>Select a conversation</p>
+              <span className="support-select-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faComments} />
+              </span>
+              <h3>Live chat with app customers</h3>
+              <p>
+                {inbox.unreadTotal > 0
+                  ? `${inbox.unreadTotal} unread ${inbox.unreadTotal === 1 ? "message" : "messages"}. Pick a conversation to reply.`
+                  : "Pick a conversation to read and reply."}
+              </p>
             </div>
           )}
         </section>
@@ -180,17 +201,12 @@ function SupportPage() {
   return (
     <>
       <Helmet>
-        <title>{`${unreadTotal > 0 ? `(${unreadTotal}) ` : ""}Support - Mesob Store`}</title>
+        <title>{`${unreadTotal > 0 ? `(${unreadTotal}) ` : ""}Live chat - Mesob Store`}</title>
       </Helmet>
-      <PanelHeader
-        size="sm"
-        content={
-          <div className="header text-center">
-            <h2 className="title">Support</h2>
-          </div>
-        }
-      />
-      <div className="content support-page">{body}</div>
+      <div className="content support-page">
+        {status === "unconfigured" && <TicketsTabs />}
+        {body}
+      </div>
     </>
   );
 }

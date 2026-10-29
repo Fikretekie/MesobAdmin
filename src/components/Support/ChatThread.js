@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowDown, faArrowLeft, faPaperclip } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowLeft, faEnvelope, faPaperclip } from "@fortawesome/free-solid-svg-icons";
 import Avatar from "./Avatar";
 import MessageBubble from "./MessageBubble";
 import Composer from "./Composer";
@@ -14,6 +14,16 @@ import { prefersReducedMotion } from "./motion";
 
 const NEAR_BOTTOM_PX = 80;
 const LOAD_OLDER_PX = 60;
+const RUN_GAP_MS = 5 * 60 * 1000;
+
+// Messages from one sender, on the same day and a few minutes apart, form a
+// run: drawn close together, with the time (and the customer's avatar) only
+// on the last one.
+const continuesRun = (prev, next) =>
+  Boolean(prev && next) &&
+  prev.sender === next.sender &&
+  dayKey(prev.createdAt) === dayKey(next.createdAt) &&
+  Date.parse(next.createdAt) - Date.parse(prev.createdAt) <= RUN_GAP_MS;
 
 const isSeen = (createdAt, peerLastReadAt) =>
   Boolean(peerLastReadAt) && Date.parse(createdAt) <= Date.parse(peerLastReadAt);
@@ -196,12 +206,10 @@ function ChatThread({ userId, conversation, drafts, onRead, announce, onBack }) 
     if (nearTop && hasMore && loaded && !loadingOlder) loadOlder();
   };
 
-  // Messages, with a separator at the start of each day. Consecutive
-  // messages from the same sender are grouped closer together.
+  // Messages, with a separator at the start of each day, grouped into runs.
   const items = [];
   let prevDay = null;
-  let prevSender = null;
-  messages.forEach((m) => {
+  messages.forEach((m, i) => {
     const day = dayKey(m.createdAt);
     if (day !== prevDay) {
       items.push(
@@ -210,14 +218,16 @@ function ChatThread({ userId, conversation, drafts, onRead, announce, onBack }) 
         </div>
       );
       prevDay = day;
-      prevSender = null;
     }
     const mine = m.sender === "admin";
     items.push(
       <MessageBubble
         key={messageKey(m)}
         message={m}
-        grouped={prevSender === m.sender}
+        grouped={continuesRun(messages[i - 1], m)}
+        last={!continuesRun(m, messages[i + 1])}
+        customerId={userId}
+        customerName={name}
         seen={mine && !isPending(m) && isSeen(m.createdAt, peerLastReadAt)}
         animate={lastChange === "live"}
         onRetry={retry}
@@ -225,7 +235,6 @@ function ChatThread({ userId, conversation, drafts, onRead, announce, onBack }) 
         onRefreshUrl={refreshAttachmentUrl}
       />
     );
-    prevSender = m.sender;
   });
 
   return (
@@ -243,9 +252,19 @@ function ChatThread({ userId, conversation, drafts, onRead, announce, onBack }) 
         <div className="support-thread-who">
           <div className="support-thread-name">{name}</div>
           <div className="support-thread-sub">
-            {showTyping ? <TypingText name={name} /> : email || " "}
+            {showTyping ? <TypingText name={name} /> : email || "App customer"}
           </div>
         </div>
+        {conversation && conversation.userEmail && (
+          <a
+            className="support-icon-btn support-thread-action"
+            href={`mailto:${conversation.userEmail}`}
+            aria-label={`Email ${conversation.userEmail}`}
+            title={`Email ${conversation.userEmail}`}
+          >
+            <FontAwesomeIcon icon={faEnvelope} />
+          </a>
+        )}
       </header>
 
       <div className="support-scroll-wrap">
@@ -264,18 +283,20 @@ function ChatThread({ userId, conversation, drafts, onRead, announce, onBack }) 
           aria-label={`Messages with ${name}`}
           tabIndex={0}
         >
-          {loaded && !hasMore && messages.length > 0 && (
-            <div className="support-history-note">Start of conversation</div>
-          )}
-          {loadingOlder && <div className="support-history-note">Loading earlier messages…</div>}
-          {!loaded && !reconnecting && (
-            <div className="support-history-note">Loading conversation…</div>
-          )}
-          {loaded && messages.length === 0 && (
-            <div className="support-history-note">No messages yet</div>
-          )}
-          {items}
-          <TypingBubble show={showTyping} name={name} />
+          <div className="support-messages-inner">
+            {loaded && !hasMore && messages.length > 0 && (
+              <div className="support-history-note">Start of conversation</div>
+            )}
+            {loadingOlder && <div className="support-history-note">Loading earlier messages…</div>}
+            {!loaded && !reconnecting && (
+              <div className="support-history-note">Loading conversation…</div>
+            )}
+            {loaded && messages.length === 0 && (
+              <div className="support-history-note">No messages yet</div>
+            )}
+            {items}
+            <TypingBubble show={showTyping} name={name} seed={userId} />
+          </div>
         </div>
 
         {showPill && (
@@ -288,6 +309,7 @@ function ChatThread({ userId, conversation, drafts, onRead, announce, onBack }) 
       <Composer
         ref={composerRef}
         userId={userId}
+        customerName={name}
         drafts={drafts}
         onSend={send}
         onDraftChange={draftChanged}
