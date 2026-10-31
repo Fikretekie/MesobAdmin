@@ -1,17 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import DataTable from "react-data-table-component";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  CardTitle,
-  Row,
-  Col,
-  Input,
-  Spinner,
-} from "reactstrap";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Input, Spinner } from "reactstrap";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEnvelope, faSearch } from "@fortawesome/free-solid-svg-icons";
 import TicketsTabs from "components/Support/TicketsTabs";
+import TicketDetail from "./TicketDetail";
+import "components/Support/email-tickets.css";
 
 const TICKETS_API = "https://xe00jwul2g.execute-api.us-east-1.amazonaws.com/dev/tickets";
 
@@ -29,17 +23,28 @@ const DEFAULT_SOURCE_BADGE = { label: "OTHER", bg: "rgba(255,255,255,0.1)", text
 
 function Tickets() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const shellRef = useRef(null);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("open");
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 640);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const el = shellRef.current;
+      if (!el) return;
+      const panel = el.closest(".main-panel");
+      const top = el.getBoundingClientRect().top + (panel ? panel.scrollTop : 0);
+      el.style.height = `${Math.max(window.innerHeight - top - 20, 420)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
   }, []);
+
+  const updateTicket = (updated) => {
+    setTickets((current) => current.map((ticket) => ticket.id === updated.id ? updated : ticket));
+  };
 
   const fetchTickets = async () => {
     try {
@@ -74,263 +79,67 @@ function Tickets() {
   const openCount = tickets.filter((t) => (t.status || "open") === "open").length;
   const closedCount = tickets.filter((t) => t.status === "closed").length;
 
-  const pillStyle = (active) => ({
-    borderRadius: "20px",
-    padding: "8px 18px",
-    fontWeight: 600,
-    fontSize: "12.5px",
-    border: "none",
-    cursor: "pointer",
-    marginRight: "8px",
-    ...(active
-      ? {
-          background: "linear-gradient(90deg, #a78bfa, #60a5fa)",
-          color: "#0a0612",
-        }
-      : {
-          background: "rgba(255,255,255,0.06)",
-          color: "rgba(255,255,255,0.65)",
-        }),
-  });
-
-  const columns = [
-    {
-      name: "Customer",
-      selector: (row) => row.customerEmail,
-      sortable: true,
-      cell: (row) => {
-        const s = SOURCE_BADGES[row.source] || DEFAULT_SOURCE_BADGE;
-        return (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {row.customerEmail}
-            </span>
-            {isMobile && (
-              <span
-                style={{
-                  background: s.bg,
-                  color: s.text,
-                  padding: "2px 7px",
-                  borderRadius: 7,
-                  fontSize: 9.5,
-                  fontWeight: 800,
-                  letterSpacing: "0.3px",
-                  flexShrink: 0,
-                }}
-              >
-                {s.label}
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    ...(isMobile
-      ? []
-      : [
-          {
-            name: "Source",
-            selector: (row) => row.source,
-            cell: (row) => {
-              const s = SOURCE_BADGES[row.source] || DEFAULT_SOURCE_BADGE;
-              return (
-                <span
-                  style={{
-                    background: s.bg,
-                    color: s.text,
-                    padding: "4px 10px",
-                    borderRadius: 8,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    letterSpacing: "0.4px",
-                  }}
-                >
-                  {s.label}
-                </span>
-              );
-            },
-            width: "100px",
-          },
-          {
-            name: "Last replied by",
-            selector: (row) =>
-              row.replies?.length ? row.replies[row.replies.length - 1].repliedBy : "-",
-            width: "180px",
-          },
-        ]),
-    {
-      name: "Status",
-      selector: (row) => row.status,
-      cell: (row) => {
-        const c = STATUS_COLORS[row.status || "open"];
-        return (
-          <span
-            style={{
-              background: c.bg,
-              color: c.text,
-              padding: "4px 12px",
-              borderRadius: 12,
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: "capitalize",
-            }}
-          >
-            {row.status || "open"}
-          </span>
-        );
-      },
-      width: isMobile ? "80px" : "110px",
-    },
-    {
-      name: "Last Activity",
-      selector: (row) => row.updatedAt || row.createdAt,
-      cell: (row) => {
-        const d = new Date(row.updatedAt || row.createdAt);
-        return isMobile ? d.toLocaleDateString() : d.toLocaleString();
-      },
-      sortable: true,
-      width: isMobile ? "90px" : "190px",
-    },
-  ];
-
   return (
-    <div
-      className="content"
-      style={{
-        background:
-          "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
-        minHeight: "100vh",
-      }}
-    >
+    <div className="content email-tickets-page">
       <TicketsTabs />
-      <Row>
-        <Col xs={12}>
-          <Card
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              backdropFilter: "blur(24px)",
-              border: "1px solid rgba(255,255,255,0.09)",
-              borderRadius: "16px",
-              boxShadow: "none",
-            }}
-          >
-            <CardHeader style={{ borderBottom: "none", paddingBottom: 0 }}>
-              {/* Row 1: title only */}
-              <CardTitle tag="h4" style={{ color: "#fff", margin: "0 0 14px 0" }}>
-                Support Tickets
-              </CardTitle>
-
-              {/* Row 2: search — its own full-width row, never overlaps anything below it */}
-              <Input
-                type="text"
-                placeholder="Search by customer or message..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  width: "100%",
-                  maxWidth: "420px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#fff",
-                  borderRadius: "10px",
-                  marginBottom: 16,
-                }}
-              />
-
-              {/* Row 3: tabs — its own row, clearly below the search */}
-              <div style={{ marginBottom: 16 }}>
-                <button
-                  style={pillStyle(activeTab === "open")}
-                  onClick={() => setActiveTab("open")}
-                >
-                  Open ({openCount})
+      <div ref={shellRef} className={`email-inbox-shell${id ? " has-ticket" : ""}`}>
+        <aside className="email-inbox-list" aria-label="Support tickets">
+          <div className="email-inbox-list-header">
+            <div className="email-inbox-filters" aria-label="Ticket status">
+              {[ ["open", openCount], ["closed", closedCount] ].map(([status, count]) => (
+                <button key={status} type="button" className={`email-inbox-filter${activeTab === status ? " is-active" : ""}`}
+                  aria-pressed={activeTab === status} onClick={() => setActiveTab(status)}>
+                  {status === "open" ? "Open" : "Closed"} ({count})
                 </button>
-                <button
-                  style={pillStyle(activeTab === "closed")}
-                  onClick={() => setActiveTab("closed")}
-                >
-                  Closed ({closedCount})
-                </button>
-              </div>
-            </CardHeader>
-            <CardBody>
-              {loading ? (
-                <div style={{ textAlign: "center", padding: "20px" }}>
-                  <Spinner color="primary" />
-                  <p style={{ color: "rgba(255,255,255,0.6)" }}>
-                    Loading tickets...
-                  </p>
-                </div>
-              ) : (
-                <DataTable
-                  columns={columns}
-                  data={filteredData}
-                  responsive
-                  highlightOnHover
-                  pointerOnHover
-                  onRowClicked={(row) => navigate(`/admin/tickets/${row.id}`)}
-                  noDataComponent={`No ${activeTab} tickets.`}
-                  customStyles={{
-                    table: { style: { background: "transparent" } },
-                    headRow: {
-                      style: {
-                        background: "rgba(255,255,255,0.02)",
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
-                        minHeight: "44px",
-                      },
-                    },
-                    headCells: {
-                      style: {
-                        color: "rgba(255,255,255,0.45)",
-                        fontSize: "11px",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.4px",
-                        fontWeight: 600,
-                      },
-                    },
-                    rows: {
-                      style: {
-                        background: "transparent",
-                        color: "rgba(255,255,255,0.85)",
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        minHeight: "52px",
-                        "&:hover": { background: "rgba(255,255,255,0.04)" },
-                      },
-                    },
-                    pagination: {
-                      style: {
-                        background: "transparent",
-                        color: "rgba(255,255,255,0.6)",
-                        borderTop: "1px solid rgba(255,255,255,0.08)",
-                      },
-                      pageButtonsStyle: {
-                        color: "rgba(255,255,255,0.6)",
-                        fill: "rgba(255,255,255,0.6)",
-                        "&:disabled": { fill: "rgba(255,255,255,0.2)" },
-                        "&:hover:not(:disabled)": {
-                          background: "rgba(255,255,255,0.08)",
-                        },
-                      },
-                    },
-                    noData: {
-                      style: {
-                        background: "transparent",
-                        color: "rgba(255,255,255,0.4)",
-                      },
-                    },
-                  }}
-                />
-              )}
-            </CardBody>
-          </Card>
-        </Col>
-      </Row>
+              ))}
+            </div>
+            <div className="email-inbox-search">
+              <FontAwesomeIcon icon={faSearch} aria-hidden="true" />
+              <Input type="search" placeholder="Search by customer or message..." aria-label="Search tickets"
+                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
+          <div className="email-inbox-rows">
+            {loading ? <div className="email-inbox-notice"><Spinner size="sm" /> Loading tickets...</div> :
+              filteredData.length === 0 ? <div className="email-inbox-notice">No {activeTab} tickets.</div> :
+              filteredData.map((ticket) => {
+                const source = SOURCE_BADGES[ticket.source] || DEFAULT_SOURCE_BADGE;
+                const status = STATUS_COLORS[ticket.status || "open"] || STATUS_COLORS.open;
+                const lastReply = ticket.replies?.[ticket.replies.length - 1];
+                const preview = (lastReply?.message || ticket.message || "").replace(/<[^>]*>/g, " ");
+                return (
+                  <button key={ticket.id} type="button" className={`email-inbox-row${id === ticket.id ? " is-selected" : ""}`}
+                    aria-current={id === ticket.id ? "true" : undefined}
+                    onClick={() => navigate(`/admin/tickets/${ticket.id}`)}>
+                    <span className="email-inbox-avatar" aria-hidden="true">{(ticket.customerEmail || "?").slice(0, 1).toUpperCase()}</span>
+                    <span className="email-inbox-row-content">
+                      <span className="email-inbox-row-top"><strong title={ticket.customerEmail}>{ticket.customerEmail}</strong>
+                        <time title={new Date(ticket.updatedAt || ticket.createdAt).toLocaleString()}>
+                          {new Date(ticket.updatedAt || ticket.createdAt).toLocaleDateString()}
+                        </time>
+                      </span>
+                      <span className="email-inbox-preview">{lastReply && lastReply.from !== "customer" ? "You: " : ""}{preview || "No message"}</span>
+                      <span className="email-inbox-row-meta">
+                        <span style={{ background: source.bg, color: source.text }}>{source.label}</span>
+                        <span style={{ background: status.bg, color: status.text }}>{ticket.status || "open"}</span>
+                        {lastReply?.repliedBy && <small title={lastReply.repliedBy}>Replied by {lastReply.repliedBy}</small>}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+        </aside>
+        <section className="email-inbox-detail" aria-label="Ticket details">
+          {id ? <TicketDetail key={id} embedded onTicketUpdated={updateTicket} /> : (
+            <div className="email-inbox-empty">
+              <span className="email-inbox-empty-icon"><FontAwesomeIcon icon={faEnvelope} /></span>
+              <h3>Email &amp; web support</h3>
+              <p>Pick a ticket to read the conversation and reply.</p>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

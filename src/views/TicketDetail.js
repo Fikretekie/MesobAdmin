@@ -1,3 +1,4 @@
+import "components/Support/email-tickets.css";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -80,7 +81,7 @@ function CollapsibleMessage({ text, isHtml }) {
   );
 }
 
-function TicketDetail() {
+function TicketDetail({ embedded = false, onTicketUpdated }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [ticket, setTicket] = useState(null);
@@ -126,6 +127,7 @@ function TicketDetail() {
       });
       const updated = await res.json();
       setTicket(updated);
+      onTicketUpdated?.(updated);
       setReplyText("");
       setSelectedTemplateId(null);
       alert("Reply sent to the customer!");
@@ -147,6 +149,7 @@ function TicketDetail() {
       });
       const updated = await res.json();
       setTicket(updated);
+      onTicketUpdated?.(updated);
     } catch (err) {
       console.error("Error changing status:", err);
       alert("Failed to update ticket status.");
@@ -158,10 +161,10 @@ function TicketDetail() {
   if (loading) {
     return (
       <div
-        className="content"
+        className={embedded ? "email-ticket-detail email-ticket-embedded" : "content email-tickets-page email-ticket-detail"}
         style={{
           background:
-            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+            "transparent",
           minHeight: "100vh",
           textAlign: "center",
           paddingTop: 100,
@@ -175,10 +178,10 @@ function TicketDetail() {
   if (!ticket) {
     return (
       <div
-        className="content"
+        className={embedded ? "email-ticket-detail email-ticket-embedded" : "content email-tickets-page email-ticket-detail"}
         style={{
           background:
-            "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+            "transparent",
           minHeight: "100vh",
           textAlign: "center",
           paddingTop: 100,
@@ -194,17 +197,17 @@ function TicketDetail() {
 
   return (
     <div
-      className="content"
+      className={embedded ? "email-ticket-detail email-ticket-embedded" : "content email-tickets-page email-ticket-detail"}
       style={{
         background:
-          "linear-gradient(135deg, #5b2fc4 0%, #2d1a6b 35%, #1a1035 65%, #120b26 100%)",
+          "transparent",
         minHeight: "100vh",
-        paddingTop: 24,
+        paddingTop: 108,
       }}
     >
       <Row>
         <Col xs={12}>
-          <Card
+          <Card className="email-tickets-card"
             style={{
               background: "rgba(255,255,255,0.04)",
               backdropFilter: "blur(24px)",
@@ -392,7 +395,7 @@ function TicketDetail() {
                 </div>
               )}
 
-              <FormGroup>
+              <FormGroup className="email-ticket-templates">
                 <Label
                   style={{
                     display: "flex",
@@ -430,7 +433,7 @@ function TicketDetail() {
                 <Label style={{ color: "rgba(255,255,255,0.55)" }}>
                   Your Reply (sending as {adminEmail})
                 </Label>
-                <Input
+                <Input className="email-ticket-reply"
                   type="textarea"
                   rows={6}
                   value={replyText}
@@ -480,6 +483,7 @@ function TicketDetail() {
               </FormGroup>
 
               <button
+                className="email-ticket-send"
                 onClick={handleSendReply}
                 disabled={sending || !replyText.trim()}
                 style={{

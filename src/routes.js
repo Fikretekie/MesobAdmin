@@ -9,7 +9,6 @@ const PromoCodes = React.lazy(() => import("views/PromoCodes.js"));
 const Products = React.lazy(() => import("components/Products/ProductsPage"));
 const Categories = React.lazy(() => import("views/Categories.js"));
 const Tickets = React.lazy(() => import("views/Tickets.js"));
-const TicketDetail = React.lazy(() => import("views/TicketDetail.js"));
 const Support = React.lazy(() => import("components/Support/SupportPage"));
 const SellerProductManagement = React.lazy(() => import("views/SellerProductManagement.js"));
 const SellerSubcategoryManagement = React.lazy(() => import("views/SellerSubcategoryManagement.js"));
@@ -135,7 +134,7 @@ var dashRoutes = [
     path: "/tickets/:id",
     name: "Ticket Detail",
     invisible: true,
-    component: <TicketDetail />,
+    component: <Tickets />,
     layout: "/admin",
     allowedRoles: [0],
   },
